@@ -1,0 +1,12 @@
+-- Datos iniciales de registro-gym.
+--
+-- Propósito: insertar los planes base del gym para que la app no arranque vacía.
+--
+-- Estado: placeholder. El contenido real depende del schema que definan las
+-- migraciones en db/migrations/, así que este archivo se llena en el ticket
+-- de esquema de base de datos, no antes.
+--
+-- Convenciones:
+--   - Es idempotente: se puede correr más de una vez sin duplicar filas.
+--   - Usa ids explícitos para que las referencias de socios.membresia_id
+--     sean estables entre entornos.
