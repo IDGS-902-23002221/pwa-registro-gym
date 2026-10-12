@@ -141,6 +141,13 @@ Contra Supabase hay que decir `--objetivo supabase`, que además aplica `0009`:
 ./scripts/migrate.sh --objetivo supabase
 ```
 
+> Si tu WSL no tiene salida IPv6 (`Network is unreachable` contra
+> `db.<ref>.supabase.co`), usa el **Session pooler** (puerto `5432`, no el
+> `6543` de transacciones, que rompe scripts con transacciones):
+> `postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres`.
+> El `DATABASE_URL` de prod nunca se guarda en `.env`: solo se exporta en la
+> terminal para este paso.
+
 `0009_trigger_perfil_auth.sql` es la única que toca el esquema `auth` (la llave
 foránea a `auth.users` y el trigger que crea el perfil al dar de alta a un
 usuario), porque en el PostgreSQL local ese esquema no existe. Corre solo con
@@ -174,16 +181,17 @@ Cada prueba de `db/tests/` corre en su propia transacción y la revierte al fina
 que no dejan filas. Sale con código 1 si algo falla. Requiere `psql` y que las
 migraciones ya estén aplicadas.
 
-| Verificación                    | Qué fija                                              |
-| ------------------------------- | ---------------------------------------------------- |
-| `01_identidad_unica.sql`        | El socio duplicado se rechaza; el homónimo con otro teléfono no |
-| `02_doble_cobro.sql`            | El doble cobro del periodo falla, los errores de negocio y la cobertura |
-| `03_folio_unico.sql`            | Los folios son consecutivos y un cobro revertido no reutiliza su folio |
-| `04_estado_socio.sql`           | `activo` / `pausado` / `vencido` se calculan al leer |
-| `05_cadena_de_cobertura.sql`    | La cobertura se encadena, ARCO anonimiza y conserva pagos (ADR-004) |
-| `06_rls.sql`                    | `anon` no lee nada, un perfil desactivado tampoco, y lo que no se puede escribir desde el cliente |
-| `07_rendimiento.sql`             | Con 500 socios, búsqueda y listado usan índices (RNF-07) |
-| `test-folios-concurrencia.sh`   | Dos sesiones cobrando a la vez no repiten periodo ni folio |
+| Verificación                    | Qué fija                                              | Sprint |
+| ------------------------------- | ---------------------------------------------------- | ------ |
+| `01_identidad_unica.sql`        | El socio duplicado se rechaza; el homónimo con otro teléfono no | 1 |
+| `04_estado_socio.sql`           | `activo` / `pausado` / `vencido` se calculan al leer | 1 |
+| `05_cadena_de_cobertura.sql`    | La cobertura se encadena, ARCO anonimiza y conserva pagos (ADR-004) | 1 (recortado: 1 membresía activa extendida, sin historial) |
+| `fuera_sprint1/02_doble_cobro.sql` | El doble cobro del periodo falla, los errores de negocio y la cobertura | aparcado |
+| `fuera_sprint1/03_folio_unico.sql` | Los folios son consecutivos y un cobro revertido no reutiliza su folio | aparcado |
+| `fuera_sprint1/06_rls.sql`      | `anon` no lee nada, un perfil desactivado tampoco, y lo que no se puede escribir desde el cliente | aparcado (requiere `GRANT SELECT TO anon`, migración `0010` pendiente) |
+| `fuera_sprint1/07_rendimiento.sql` | Con 500 socios, búsqueda y listado usan índices (RNF-07) | aparcado |
+| `fuera_sprint1/08_reportes_y_export.sql` | Reportes y exportación ARCO | aparcado (punto 5 del padre, después del vertical) |
+| `test-folios-concurrencia.sh`   | Dos sesiones cobrando a la vez no repiten periodo ni folio | aparcado (omitido en `test-db.sh` en sprint1) |
 
 La de concurrencia es la única que necesita dos conexiones de verdad: abre dos
 `psql` en paralelo, por eso está en `scripts/` y no en `db/tests/`.
@@ -228,6 +236,12 @@ policies. A cambio, son las que garantizan las reglas.
 
 En local no se cargan datos reales (03 §1). El `seed` solo trae planes; los socios y
 pagos de las pruebas se crean y se borran solos.
+
+### Respaldos
+
+Pendiente (03 §3): respaldo diario desde GitHub Actions, porque el plan gratuito
+no expone programador propio de Postgres. Incluido el simulacro de restauración
+del punto 7 del ticket padre.
 
 El `README` y las carpetas cambian con cada ticket: la estructura y el árbol de
 `src/` los define `TICKET 000.0`, y esta sección de base de datos, `TICKET 000.1`.
