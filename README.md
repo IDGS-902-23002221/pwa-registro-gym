@@ -208,7 +208,7 @@ separe "no se pudo hacer" de "se cayó la conexión":
 | `GYM03`   | `SOCIO_YA_ELIMINADO`              |
 | `GYM04`   | `MONTO_INVALIDO`                  |
 | `GYM05`   | `FORMA_PAGO_INVALIDA`             |
-| `GYM06`   | `PERIODO_INVALIDO`                |
+| `GYM06`   | `PERIODO_INVALIDO` (solo periodo nulo; desde la 0011 cualquier día vale como inicio de cobertura) |
 | `GYM07`   | `PLAN_INVALIDO`                   |
 | `GYM08`   | `ESTADO_SOCIO_INVALIDO`           |
 | `GYM09`   | `JUSTIFICACION_REQUERIDA`         |

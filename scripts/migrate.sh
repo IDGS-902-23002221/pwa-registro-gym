@@ -162,6 +162,18 @@ MSG
   YA_APLICADAS+=("$archivo_en_disco")
 done < <(ejecutar -At -F'|' -c "SELECT version, nombre, checksum FROM $TABLA ORDER BY version")
 
+# --- Descontar lo ya aplicado de lo pendiente --------------------------------
+# Sin esto el script re-aplica todo en cada corrida y solo funciona en bases
+# recién creadas (bug encontrado 2026-10-11 al agregar la 0011 sobre local con
+# la 0001-0008 ya aplicadas).
+declare -A ES_APLICADA=()
+for ya in "${YA_APLICADAS[@]:-}"; do ES_APLICADA["$ya"]=1; done
+SOLO_PENDIENTES=()
+for nombre in "${PENDIENTES[@]}"; do
+  [ -n "${ES_APLICADA[$nombre]:-}" ] || SOLO_PENDIENTES+=("$nombre")
+done
+PENDIENTES=("${SOLO_PENDIENTES[@]:-}")
+
 # --- Informe --------------------------------------------------------------
 [ ${#YA_APLICADAS[@]} -gt 0 ] && echo "Ya aplicadas: ${#YA_APLICADAS[@]}"
 [ ${#SALTADOS[@]} -gt 0 ]    && echo "Omitidas (solo Supabase) en este objetivo: ${SALTADOS[*]}"

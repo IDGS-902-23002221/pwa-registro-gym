@@ -116,20 +116,38 @@ END
 $$;
 \echo 'OK  una sola membresia activa, terminada en la ultima cobertura'
 
--- Periodo que no es primer dia de mes.
+-- Periodo en cualquier día: desde la 0011 el periodo es la fecha de inicio de
+-- cobertura, no el día 1 del mes. Un día 15 se acepta y encadena igual.
+DO $$
+DECLARE
+  v_resultado jsonb;
+BEGIN
+  v_resultado := public.registrar_pago(
+    '55555555-5555-5555-5555-555555555555', 500.00, 'efectivo', DATE '2027-02-15', NULL
+  );
+  -- Base: max(2027-01-30, 2027-02-14) = 2027-02-14, + 30 = 2027-03-16.
+  IF (v_resultado ->> 'pagado_hasta')::date <> DATE '2027-03-16' THEN
+    RAISE EXCEPTION 'FALLO: el cobro a mitad de mes dejo pagado_hasta % y se esperaba 2027-03-16',
+      v_resultado ->> 'pagado_hasta';
+  END IF;
+END
+$$;
+\echo 'OK  un periodo a mitad de mes se acepta y encadena (0011)'
+
+-- Periodo nulo: lo único que la 0011 sigue rechazando con GYM06.
 DO $$
 BEGIN
   BEGIN
     PERFORM public.registrar_pago(
-      '55555555-5555-5555-5555-555555555555', 500.00, 'efectivo', DATE '2027-02-15', NULL
+      '55555555-5555-5555-5555-555555555555', 500.00, 'efectivo', NULL, NULL
     );
-    RAISE EXCEPTION 'FALLO: se acepto un periodo que no es inicio de mes';
+    RAISE EXCEPTION 'FALLO: se acepto un periodo nulo';
   EXCEPTION WHEN SQLSTATE 'GYM06' THEN
     NULL;  -- PERIODO_INVALIDO
   END;
 END
 $$;
-\echo 'OK  periodo que no es inicio de mes rechazado con GYM06'
+\echo 'OK  periodo nulo rechazado con GYM06'
 
 -- Monto invalido.
 DO $$

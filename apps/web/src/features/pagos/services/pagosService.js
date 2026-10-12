@@ -42,3 +42,16 @@ export async function registrarPago({ socioId, monto, formaPago, periodo, refere
   if (error) throw error
   return data
 }
+
+// Historial de pagos de un socio con su folio (últimos N, lo consulta el
+// personal desde el detalle; los socios no inician sesión en el MVP).
+export async function listarHistorial(socioId, limite = 5) {
+  const { data, error } = await supabase
+    .from('pago')
+    .select('id, monto_mxn, forma_pago, periodo, creado_en, recibo(folio)')
+    .eq('socio_id', socioId)
+    .order('periodo', { ascending: false })
+    .limit(limite)
+  if (error) throw error
+  return data ?? []
+}

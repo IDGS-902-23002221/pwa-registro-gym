@@ -86,6 +86,60 @@ END
 $$;
 \echo 'OK  la cobertura visible se sostiene en socio.pagado_hasta (ADR-004)'
 
+-- Historias 0011: cliente nuevo cualquier día + renovación anticipada.
+-- Nadia llega el 11 de febrero y su mes corre desde ese día.
+DO $$
+DECLARE
+  v_resultado jsonb;
+BEGIN
+  INSERT INTO public.socio (id, nombre, apellidos, telefono)
+  VALUES ('77777777-1111-1111-1111-111111111111', 'Nadia', 'Nueva Diaz', '5571111111');
+
+  SELECT public.registrar_pago(
+           '77777777-1111-1111-1111-111111111111', 500.00, 'efectivo', DATE '2026-02-11', NULL
+         ) INTO v_resultado;
+  -- Base 2026-02-10 + 30 = 2026-03-12.
+  IF (v_resultado ->> 'pagado_hasta')::date <> DATE '2026-03-12' THEN
+    RAISE EXCEPTION 'FALLO: primer pago de Nadia dejo pagado_hasta % y se esperaba 2026-03-12',
+      v_resultado ->> 'pagado_hasta';
+  END IF;
+
+  -- Renueva el 10 de marzo, antes de vencer: se encadena desde el 12, sin perder días.
+  SELECT public.registrar_pago(
+           '77777777-1111-1111-1111-111111111111', 500.00, 'efectivo', DATE '2026-03-10', NULL
+         ) INTO v_resultado;
+  IF (v_resultado ->> 'pagado_hasta')::date <> DATE '2026-04-11' THEN
+    RAISE EXCEPTION 'FALLO: renovacion anticipada dejo pagado_hasta % y se esperaba 2026-04-11',
+      v_resultado ->> 'pagado_hasta';
+  END IF;
+END
+$$;
+\echo 'OK  alta cualquier día y renovación anticipada encadenan (0011)'
+
+-- Visita un domingo: plan de 1 día, cubre solo ese día.
+-- (El plan se inserta aquí porque el seed, dueño del catálogo, no está cargado
+-- durante las pruebas.)
+DO $$
+DECLARE
+  v_resultado jsonb;
+BEGIN
+  INSERT INTO public.plan (nombre, precio_mxn, dias_periodo, activo)
+  VALUES ('Visita', 50.00, 1, true);
+
+  INSERT INTO public.socio (id, nombre, apellidos, telefono)
+  VALUES ('88888888-2222-2222-2222-222222222222', 'Victor', 'Visita Sol', '5572222222');
+
+  SELECT public.registrar_pago(
+           '88888888-2222-2222-2222-222222222222', 50.00, 'efectivo', DATE '2026-02-15', NULL
+         ) INTO v_resultado;
+  IF (v_resultado ->> 'pagado_hasta')::date <> DATE '2026-02-15' THEN
+    RAISE EXCEPTION 'FALLO: la visita dejo pagado_hasta % y se esperaba 2026-02-15',
+      v_resultado ->> 'pagado_hasta';
+  END IF;
+END
+$$;
+\echo 'OK  la visita cubre solo el día del pago (0011)'
+
 -- Un socio que ya no esta activo no desaparece de los reportes: se archiva, no se
 -- borra. Un pago de un socio archivado si se rechaza (GYM03).
 DO $$
