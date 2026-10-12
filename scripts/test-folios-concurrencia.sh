@@ -117,9 +117,16 @@ echo "  $TOTAL cobros de dos sesiones en paralelo, sin periodos ni folios repeti
 
 # Limpieza: estas filas son de la prueba, no del seed. El orden importa porque
 # recibo.pago_id, membresia.plan_id y pago.registrado_por son ON DELETE RESTRICT: hay
-# que borrar de abajo hacia arriba o Postgres rechaza el borrado.
+# que borrar de abajo hacia arriba o Postgres rechaza el borrado. La bitácora se
+# borra PRIMERO (referencia a los pagos por entidad_id) para no dejar basura que
+# contamine el conteo de db/tests/02_doble_cobro.sql.
 psql "$DATABASE_URL" -q <<SQL >/dev/null 2>&1
 BEGIN;
+DELETE FROM public.auditoria
+ WHERE (accion = 'cobro' AND entidad = 'pago'
+        AND entidad_id IN (SELECT id FROM public.pago WHERE referencia LIKE 'concurrencia %'))
+    OR (accion = 'alta' AND entidad = 'socio'
+        AND entidad_id IN (SELECT id FROM public.socio WHERE apellidos LIKE 'Sesion % %'));
 DELETE FROM public.recibo r
   USING public.pago p
  WHERE r.pago_id = p.id AND p.referencia LIKE 'concurrencia %';

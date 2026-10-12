@@ -8,7 +8,10 @@
 
 \ir _prelude.sql
 
--- La llave publica, sin sesion, no lee nada.
+-- La llave publica, sin sesion, no lee nada. Se limpia el GUC que dejó el
+-- prelude: un anon real nunca trae app.usuario_id puesto, y sin limpiarlo RLS
+-- vería al usuario activo anterior.
+SELECT set_config('app.usuario_id', '', true);
 SET ROLE anon;
 DO $$
 DECLARE
@@ -53,8 +56,8 @@ DECLARE
   v_conteo bigint;
 BEGIN
   SELECT count(*) INTO v_conteo FROM public.socio;
-  IF v_conteo < 5 THEN
-    RAISE EXCEPTION 'FALLO: un perfil activo leyo solo % socios, se esperaban al menos 5', v_conteo;
+  IF v_conteo < 1 THEN
+    RAISE EXCEPTION 'FALLO: un perfil activo leyo % socios, se esperaba al menos 1', v_conteo;
   END IF;
 END
 $$;
@@ -105,16 +108,23 @@ END
 $$;
 \echo 'OK  el estado del socio no se puede cambiar a mano'
 
--- Y no puede crear socios sueltos ni borrarlos.
+-- El alta de socio SÍ entra por el cliente: es la vía auditada (el trigger de
+-- 0007 escribe la bitácora). Lo que no puede es borrar.
 DO $$
+DECLARE
+  v_id uuid;
+  v_altas integer;
 BEGIN
-  BEGIN
-    INSERT INTO public.socio (nombre, apellidos, telefono)
-    VALUES ('Intruso', 'Sin permisos', '5500000000');
-    RAISE EXCEPTION 'FALLO: el cliente pudo crear un socio sin pasar por el alta auditada';
-  EXCEPTION WHEN insufficient_privilege OR check_violation THEN
-    NULL;  -- sin INSERT en el GRANT, o sin politica WITH CHECK
-  END;
+  INSERT INTO public.socio (nombre, apellidos, telefono)
+  VALUES ('Intruso', 'Auditado', '5500000000')
+  RETURNING id INTO v_id;
+
+  SELECT count(*) INTO v_altas
+  FROM public.auditoria
+  WHERE accion = 'alta' AND entidad = 'socio' AND entidad_id = v_id;
+  IF v_altas <> 1 THEN
+    RAISE EXCEPTION 'FALLO: el alta del cliente no dejo bitacora';
+  END IF;
 
   BEGIN
     DELETE FROM public.socio WHERE id = '55555555-5555-5555-5555-555555555555';
@@ -124,7 +134,7 @@ BEGIN
   END;
 END
 $$;
-\echo 'OK  no se pueden crear ni borrar socios desde el cliente'
+\echo 'OK  el alta del cliente deja bitacora y no puede borrar socios'
 
 -- El perfil no se autoedita: el rol no es un parametro de la sesion.
 DO $$

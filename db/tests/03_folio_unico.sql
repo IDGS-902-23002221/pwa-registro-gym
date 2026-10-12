@@ -20,15 +20,12 @@ BEGIN
            '66666666-6666-6666-6666-666666666666', 500.00, 'efectivo', DATE '2026-10-01', NULL
          )) ->> 'folio' INTO v_folio_2;
 
-  IF v_folio_1 <> 1 THEN
-    RAISE EXCEPTION 'FALLO: el primer folio deberia ser 1, salio %', v_folio_1;
-  END IF;
-  IF v_folio_2 <> 2 THEN
-    RAISE EXCEPTION 'FALLO: el segundo folio deberia ser 2, salio %', v_folio_2;
+  IF v_folio_2 <> v_folio_1 + 1 THEN
+    RAISE EXCEPTION 'FALLO: los folios deberian ser consecutivos (% y %)', v_folio_1, v_folio_2;
   END IF;
 END
 $$;
-\echo 'OK  los folios son consecutivos (1, 2)'
+\echo 'OK  los folios son consecutivos (nextval no se reutiliza)'
 
 DO $$
 DECLARE

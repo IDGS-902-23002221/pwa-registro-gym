@@ -80,10 +80,17 @@ done
 
 echo "----------------------------------------------------------------"
 echo "Folios bajo concurrencia (dos sesiones a la vez)"
-echo "(Recorte sprint1: fuera de alcance, se omite. Ver db/tests/fuera_sprint1/)"
+
+if "$RAIZ"/scripts/test-folios-concurrencia.sh; then
+  echo "   PASA test-folios-concurrencia.sh"
+else
+  echo "   FALLA test-folios-concurrencia.sh"
+  FALLIDAS=$((FALLIDAS + 1))
+  FALLOS+=("test-folios-concurrencia.sh")
+fi
 
 echo "----------------------------------------------------------------"
-echo "$TOTAL verificaciones, $FALLIDAS fallidas"
+echo "$((TOTAL + 1)) verificaciones, $FALLIDAS fallidas"
 
 if [[ $FALLIDAS -gt 0 ]]; then
   echo "Fallaron:"

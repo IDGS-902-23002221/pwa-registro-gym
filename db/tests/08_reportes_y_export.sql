@@ -126,8 +126,9 @@ BEGIN
   END IF;
 
   v_membresias := v_export -> 'membresias';
-  IF jsonb_array_length(v_membresias) <> 2 THEN
-    RAISE EXCEPTION 'FALLO: la exportacion trae % membresias y se esperaban 2',
+  -- Una sola membresía activa extendida (02 §5: "extiende la vigencia", no historial).
+  IF jsonb_array_length(v_membresias) <> 1 THEN
+    RAISE EXCEPTION 'FALLO: la exportacion trae % membresias y se esperaba 1',
       jsonb_array_length(v_membresias);
   END IF;
 
