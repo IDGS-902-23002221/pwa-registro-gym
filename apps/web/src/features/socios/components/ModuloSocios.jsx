@@ -1,17 +1,21 @@
-import Container from '@mui/material/Container';
-import Header from '../../../shared/layouts/Header';
-import Footer from '../../../shared/layouts/Footer';
-import FormularioRegistro from './FormularioRegistro';
-import TablaRegistros from './TablaRegistros';
-import FormularioEdicion from './FormularioEdicion';
-import DetalleUsuario from './DetalleUsuario';
+import Container from '@mui/material/Container'
+import TextField from '@mui/material/TextField'
+import Alert from '@mui/material/Alert'
+import Header from '../../../shared/layouts/Header'
+import Footer from '../../../shared/layouts/Footer'
+import FormularioRegistro from './FormularioRegistro'
+import TablaRegistros from './TablaRegistros'
+import FormularioEdicion from './FormularioEdicion'
+import DetalleUsuario from './DetalleUsuario'
 
-// socios y membresias llegan por props desde app
-// el hook ya no se llama aqui para que el estado no se pierda al cambiar de pantalla
-function ModuloSocios({ socios, membresias }) {
-
+// socios llega por props desde app (hook con Supabase).
+function ModuloSocios({ socios }) {
   const {
     registros,
+    cargando,
+    error,
+    busqueda,
+    buscar,
     setEditandoId,
     setDetalleId,
     agregarRegistro,
@@ -19,40 +23,51 @@ function ModuloSocios({ socios, membresias }) {
     actualizarRegistro,
     registroEnEdicion,
     registroDetalle,
-  } = socios;
+  } = socios
 
   return (
     <>
       <Header titulo="Modulo de socios" totalRegistros={registros.length} />
       <Container maxWidth="md">
-        { registroEnEdicion ? (
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        <TextField
+          label="Buscar por nombre"
+          value={busqueda}
+          onChange={(e) => buscar(e.target.value)}
+          size="small"
+          fullWidth
+          sx={{ mb: 2 }}
+        />
+        {registroEnEdicion ? (
           <FormularioEdicion
             registro={registroEnEdicion}
             onActualizar={actualizarRegistro}
             onCancelar={() => setEditandoId(null)}
-            membresias={membresias}
           />
         ) : (
-          <FormularioRegistro onAgregar={agregarRegistro} membresias={membresias}/>
+          <FormularioRegistro onAgregar={agregarRegistro} registros={registros} />
         )}
         <TablaRegistros
           registros={registros}
+          cargando={cargando}
           onEliminar={eliminarRegistro}
           onEditar={setEditandoId}
           onVerDetalle={setDetalleId}
-          membresias={membresias}
         />
 
         <DetalleUsuario
           registro={registroDetalle}
           abierto={Boolean(registroDetalle)}
           onCerrar={() => setDetalleId(null)}
-          membresias={membresias}
         />
       </Container>
       <Footer />
     </>
-  );
+  )
 }
 
-export default ModuloSocios;
+export default ModuloSocios

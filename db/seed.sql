@@ -11,16 +11,21 @@
 
 INSERT INTO public.plan (nombre, precio_mxn, dias_periodo, activo)
 VALUES
-  ('Mensual',    500.00, 30, true),
-  ('Trimestral', 1350.00, 90, true),
-  ('Semestral',  2400.00, 180, true),
-  ('Anual',      4200.00, 365, true)
+  ('Mensual',    350.00, 30, true),
+  ('Estudiante', 250.00, 30, true),
+  ('Visita',      50.00,  1, true)
 ON CONFLICT (nombre) DO UPDATE
    SET precio_mxn   = EXCLUDED.precio_mxn,
        dias_periodo = EXCLUDED.dias_periodo,
        activo       = EXCLUDED.activo;
 
--- Verificacion: deben salir 4 planes activos.
+-- Los planes viejos del arranque (Trimestral, Semestral, Anual) se desactivan:
+-- ya no se venden, pero se conservan por historial.
+UPDATE public.plan
+   SET activo = false
+ WHERE nombre NOT IN ('Mensual', 'Estudiante', 'Visita');
+
+-- Verificacion: deben salir 3 planes activos.
 SELECT nombre, precio_mxn, dias_periodo
 FROM public.plan
 WHERE activo

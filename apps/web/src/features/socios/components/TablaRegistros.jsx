@@ -1,33 +1,28 @@
-import Paper from '@mui/material/Paper';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
-import IconButton from '@mui/material/IconButton';
-import Typography from '@mui/material/Typography';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import VisibilityIcon from '@mui/icons-material/Visibility';
+import Paper from '@mui/material/Paper'
+import Table from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableCell from '@mui/material/TableCell'
+import TableContainer from '@mui/material/TableContainer'
+import TableHead from '@mui/material/TableHead'
+import TableRow from '@mui/material/TableRow'
+import IconButton from '@mui/material/IconButton'
+import Typography from '@mui/material/Typography'
+import DeleteIcon from '@mui/icons-material/Delete'
+import EditIcon from '@mui/icons-material/Edit'
+import VisibilityIcon from '@mui/icons-material/Visibility'
 
-function TablaRegistros({ registros, onEliminar, onEditar, onVerDetalle, membresias }) {
-
-  const filas = [];
+// Lista desde socios_con_estado: muestra el estado calculado (activo / pausado /
+// vencido). Eliminar es ARCO (anonimiza, conserva pagos): pide confirmación.
+function TablaRegistros({ registros, onEliminar, onEditar, onVerDetalle, cargando }) {
+  const filas = []
   registros.forEach((registro, indice) => {
-
-    // buscar la membresia del socio por su id
-    const membresia = membresias.find((m) => m.id === registro.membresiaId);
-
     filas.push(
       <TableRow key={registro.id}>
         <TableCell>{indice + 1}</TableCell>
-        <TableCell>{registro.nombre}</TableCell>
-        <TableCell>{registro.email}</TableCell>
-        <TableCell>{registro.telefono}</TableCell>
-        <TableCell>{membresia ? membresia.nombre : 'Sin membresia'}</TableCell>
+        <TableCell>{registro.nombre} {registro.apellidos}</TableCell>
+        <TableCell>{registro.telefono ?? '—'}</TableCell>
+        <TableCell>{registro.estado_calculado}</TableCell>
         <TableCell align="right">
-
           <IconButton
             size="small"
             color="info"
@@ -49,16 +44,23 @@ function TablaRegistros({ registros, onEliminar, onEditar, onVerDetalle, membres
           <IconButton
             size="small"
             color="error"
-            onClick={() => onEliminar(registro.id)}
+            onClick={() => {
+              if (
+                window.confirm(
+                  `Eliminar a ${registro.nombre} ${registro.apellidos ?? ''}? Se anonimizan sus datos (ARCO) y se conservan sus pagos.`
+                )
+              ) {
+                onEliminar(registro.id)
+              }
+            }}
             aria-label={`Eliminar registro de ${registro.nombre}`}
           >
             <DeleteIcon fontSize="small" />
           </IconButton>
-
         </TableCell>
       </TableRow>
-    );
-  });
+    )
+  })
 
   return (
     <TableContainer component={Paper} elevation={2}>
@@ -66,10 +68,9 @@ function TablaRegistros({ registros, onEliminar, onEditar, onVerDetalle, membres
         <TableHead>
           <TableRow>
             <TableCell>#</TableCell>
-            <TableCell>Nombre</TableCell>
-            <TableCell>Email</TableCell>
+            <TableCell>Socio</TableCell>
             <TableCell>Telefono</TableCell>
-            <TableCell>Membresia</TableCell>
+            <TableCell>Estado</TableCell>
             <TableCell align="right">Acciones</TableCell>
           </TableRow>
         </TableHead>
@@ -78,9 +79,9 @@ function TablaRegistros({ registros, onEliminar, onEditar, onVerDetalle, membres
             filas
           ) : (
             <TableRow>
-              <TableCell colSpan={6}>
+              <TableCell colSpan={5}>
                 <Typography variant="body2" color="text.secondary" align="center">
-                  Aun no hay registros
+                  {cargando ? 'Cargando…' : 'Aun no hay registros'}
                 </Typography>
               </TableCell>
             </TableRow>
@@ -88,7 +89,7 @@ function TablaRegistros({ registros, onEliminar, onEditar, onVerDetalle, membres
         </TableBody>
       </Table>
     </TableContainer>
-  );
+  )
 }
 
-export default TablaRegistros;
+export default TablaRegistros

@@ -1,59 +1,70 @@
-import { useState } from 'react';
-import Paper from '@mui/material/Paper';
-import Box from '@mui/material/Box';
-import TextField from '@mui/material/TextField';
-import MenuItem from '@mui/material/MenuItem';
-import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
-import Alert from '@mui/material/Alert';
-import { validarCampos } from '../models/socioModel';
+import { useState } from 'react'
+import Paper from '@mui/material/Paper'
+import Box from '@mui/material/Box'
+import TextField from '@mui/material/TextField'
+import Button from '@mui/material/Button'
+import Typography from '@mui/material/Typography'
+import Alert from '@mui/material/Alert'
+import { validarContacto } from '../models/socioModel'
 
-// membresias llega por props para llenar el select
-function FormularioRegistro({ onAgregar, membresias }) {
-  const [nombre, setNombre] = useState('');
-  const [email, setEmail] = useState('');
-  const [telefono, setTelefono] = useState('');
-  const [membresiaId, setMembresiaId] = useState('');
-  const [error, setError] = useState('');
+// Normalización igual que la base (minúsculas, sin acentos, un solo espacio).
+const normalizar = (texto) =>
+  (texto ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+// Alta de socio: nombre + apellidos + teléfono (+ correo opcional).
+// Sin membresía: la cobertura nace con el primer pago (registrar_pago).
+function FormularioRegistro({ onAgregar, registros = [] }) {
+  const [nombre, setNombre] = useState('')
+  const [apellidos, setApellidos] = useState('')
+  const [telefono, setTelefono] = useState('')
+  const [correo, setCorreo] = useState('')
+  const [error, setError] = useState('')
+  const [aviso, setAviso] = useState('')
+  const [enviando, setEnviando] = useState(false)
 
   const limpiarFormulario = () => {
-    setNombre('');
-    setEmail('');
-    setTelefono('');
-    setMembresiaId('');
-  };
+    setNombre('')
+    setApellidos('')
+    setTelefono('')
+    setCorreo('')
+  }
 
-  const manejarEnvio = (evento) => {
-    evento.preventDefault();
+  const manejarEnvio = async (evento) => {
+    evento.preventDefault()
 
-    const mensajeError = validarCampos(nombre, email, telefono, membresiaId);
+    const mensajeError = validarContacto(nombre, apellidos, telefono)
     if (mensajeError) {
-      setError(mensajeError);
-      return;
+      setError(mensajeError)
+      return
     }
 
-    const nuevoRegistro = {
-      id: `soc-${Date.now()}`,
-      nombre,
-      email,
-      telefono,
-      membresiaId,
-    };
+    setEnviando(true)
+    const resultado = await onAgregar({ nombre, apellidos, telefono, correo })
+    setEnviando(false)
 
-    onAgregar(nuevoRegistro);
-    setError('');
-    limpiarFormulario();
-  };
-
-  // opciones del select, una por cada membresia
-  const opciones = [];
-  membresias.forEach((membresia) => {
-    opciones.push(
-      <MenuItem key={membresia.id} value={membresia.id}>
-        {membresia.nombre}
-      </MenuItem>
-    );
-  });
+    if (!resultado.ok) {
+      setError(resultado.mensaje)
+      return
+    }
+    // Aviso sin bloqueo (02 §4): mismo nombre con otro teléfono.
+    const homonimo = registros.some(
+      (r) =>
+        normalizar(r.nombre) === normalizar(nombre) &&
+        normalizar(r.apellidos) === normalizar(apellidos)
+    )
+    setAviso(
+      homonimo
+        ? 'Aviso: ya existe otro socio con ese mismo nombre (otro teléfono). Revisa que no sea la misma persona.'
+        : ''
+    )
+    setError('')
+    limpiarFormulario()
+  }
 
   return (
     <Paper sx={{ p: 3, mb: 3 }} elevation={2}>
@@ -64,6 +75,11 @@ function FormularioRegistro({ onAgregar, membresias }) {
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
+        </Alert>
+      )}
+      {aviso && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {aviso}
         </Alert>
       )}
 
@@ -79,10 +95,9 @@ function FormularioRegistro({ onAgregar, membresias }) {
           size="small"
         />
         <TextField
-          label="Email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          label="Apellidos"
+          value={apellidos}
+          onChange={(e) => setApellidos(e.target.value)}
           size="small"
         />
         <TextField
@@ -92,21 +107,18 @@ function FormularioRegistro({ onAgregar, membresias }) {
           size="small"
         />
         <TextField
-          select
-          label="Membresia"
-          value={membresiaId}
-          onChange={(e) => setMembresiaId(e.target.value)}
+          label="Correo (opcional)"
+          type="email"
+          value={correo}
+          onChange={(e) => setCorreo(e.target.value)}
           size="small"
-          sx={{ minWidth: 160 }}
-        >
-          {opciones}
-        </TextField>
-        <Button type="submit" variant="contained">
-          Agregar
+        />
+        <Button type="submit" variant="contained" disabled={enviando}>
+          {enviando ? 'Guardando…' : 'Agregar'}
         </Button>
       </Box>
     </Paper>
-  );
+  )
 }
 
-export default FormularioRegistro;
+export default FormularioRegistro
