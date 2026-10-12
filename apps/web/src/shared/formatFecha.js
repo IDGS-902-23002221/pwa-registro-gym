@@ -24,6 +24,14 @@ export const moverDias = (fecha, n) => {
   return `${f.getUTCFullYear()}-${String(f.getUTCMonth() + 1).padStart(2, '0')}-${String(f.getUTCDate()).padStart(2, '0')}`
 }
 
+// '2026-10-30T14:05:00+00:00' -> '30 de octubre de 2026, 14:05' (hora tal cual
+// viene de la base, sin convertir zona).
+export const fechaHora = (fechaHora) => {
+  if (!fechaHora) return '—'
+  const [fecha, hora] = String(fechaHora).split('T')
+  return `${fechaLarga(fecha)}, ${(hora ?? '').slice(0, 5)}`
+}
+
 // '2026-10-01' -> 'octubre de 2026'
 export const nombreDelMes = (fecha) => {
   if (!fecha) return '—'
