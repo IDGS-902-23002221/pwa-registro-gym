@@ -10,6 +10,7 @@ import useMembresias from '../features/membresias/hooks/useMembresias'
 import useAuth from '../features/auth/hooks/useAuth'
 import Login from '../pages/Login'
 import RegistrarPago from '../pages/RegistrarPago'
+import Reportes from '../pages/Reportes'
 
 // Guard: sin sesión va a /login; con sesión cargando muestra espera.
 function RequiereSesion({ auth, children }) {
@@ -54,6 +55,9 @@ function Panel({ auth }) {
         <Button variant="text" color="inherit" onClick={() => navegar('/pagar')}>
           Cobrar
         </Button>
+        <Button variant="text" color="inherit" onClick={() => navegar('/reportes')}>
+          Reportes
+        </Button>
         <Button variant="text" color="inherit" onClick={salir}>
           Salir
         </Button>
@@ -88,6 +92,14 @@ function App() {
           element={
             <RequiereSesion auth={auth}>
               <RegistrarPago />
+            </RequiereSesion>
+          }
+        />
+        <Route
+          path="/reportes"
+          element={
+            <RequiereSesion auth={auth}>
+              <Reportes />
             </RequiereSesion>
           }
         />

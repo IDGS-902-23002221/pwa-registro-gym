@@ -17,6 +17,9 @@ dist-ssr
 .env.*
 !.env.example
 
+# Respaldos locales (traen datos de producción, nunca se commitean)
+respaldos/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

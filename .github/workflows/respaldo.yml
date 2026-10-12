@@ -1,0 +1,55 @@
+# Respaldo nocturno de Supabase (03 §3).
+#
+# Corre backup.sh cada noche contra la base de producción y sube el .dump como
+# artefacto privado del repo (retención 30 días). Si falla, crea un issue
+# "Respaldo falló YYYY-MM-DD" para que llegue aviso por mail de GitHub.
+#
+# Requiere el secret DATABASE_URL_BACKUP (string del Session pooler, puerto
+# 5432): Settings → Secrets and variables → Actions → New repository secret.
+# La cadena nunca va en el repo.
+#
+# Además del schedule, se puede correr a mano: Actions → Respaldo nocturno →
+# Run workflow.
+
+name: Respaldo nocturno
+
+on:
+  schedule:
+    # 06:00 UTC = medianoche en México (UTC-6).
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  respaldo:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generar respaldo
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_BACKUP }}
+        run: ./scripts/backup.sh /tmp/respaldos
+
+      - name: Subir artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: respaldo-${{ github.run_id }}
+          path: /tmp/respaldos/respaldo-*.dump
+          retention-days: 30
+
+      - name: Avisar si falló
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Respaldo falló ${new Date().toISOString().slice(0, 10)}`,
+              body: `El workflow de respaldo nocturno falló. Revisar: ${context.payload.repository.html_url}/actions/runs/${context.runId}`,
+              labels: ['respaldo']
+            })
