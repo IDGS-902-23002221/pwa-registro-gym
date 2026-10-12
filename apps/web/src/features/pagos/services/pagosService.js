@@ -45,13 +45,26 @@ export async function registrarPago({ socioId, monto, formaPago, periodo, refere
 
 // Historial de pagos de un socio con su folio (últimos N, lo consulta el
 // personal desde el detalle; los socios no inician sesión en el MVP).
+// Además pega el plan y su vencimiento: se cruza cada pago con la membresía
+// cuya vigencia [inicia_en, termina_en] contiene su periodo.
 export async function listarHistorial(socioId, limite = 5) {
-  const { data, error } = await supabase
-    .from('pago')
-    .select('id, monto_mxn, forma_pago, periodo, creado_en, recibo(folio)')
-    .eq('socio_id', socioId)
-    .order('periodo', { ascending: false })
-    .limit(limite)
+  const [{ data: pagos, error }, { data: membresias, error: errorM }] = await Promise.all([
+    supabase
+      .from('pago')
+      .select('id, monto_mxn, forma_pago, periodo, creado_en, recibo(folio)')
+      .eq('socio_id', socioId)
+      .order('periodo', { ascending: false })
+      .limit(limite),
+    supabase
+      .from('membresia')
+      .select('inicia_en, termina_en, plan(nombre, dias_periodo)')
+      .eq('socio_id', socioId),
+  ])
   if (error) throw error
-  return data ?? []
+  if (errorM) throw errorM
+  return (pagos ?? []).map((p) => {
+    const m = (membresias ?? []).find((x) => x.inicia_en <= p.periodo && p.periodo <= x.termina_en)
+    const plan = Array.isArray(m?.plan) ? m.plan[0] : m?.plan
+    return { ...p, planNombre: plan?.nombre ?? null, planDias: plan?.dias_periodo ?? null, vence: m?.termina_en ?? null }
+  })
 }
