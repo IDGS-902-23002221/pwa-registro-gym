@@ -167,12 +167,16 @@ done < <(ejecutar -At -F'|' -c "SELECT version, nombre, checksum FROM $TABLA ORD
 # recién creadas (bug encontrado 2026-10-11 al agregar la 0011 sobre local con
 # la 0001-0008 ya aplicadas).
 declare -A ES_APLICADA=()
-for ya in "${YA_APLICADAS[@]:-}"; do ES_APLICADA["$ya"]=1; done
-SOLO_PENDIENTES=()
+for ya in ${YA_APLICADAS[@]+"${YA_APLICADAS[@]}"}; do ES_APLICADA["$ya"]=1; done
+PENDIENTES_FILTRADAS=()
 for nombre in "${PENDIENTES[@]}"; do
-  [ -n "${ES_APLICADA[$nombre]:-}" ] || SOLO_PENDIENTES+=("$nombre")
+  [ -n "${ES_APLICADA[$nombre]:-}" ] || PENDIENTES_FILTRADAS+=("$nombre")
 done
-PENDIENTES=("${SOLO_PENDIENTES[@]:-}")
+if [ ${#PENDIENTES_FILTRADAS[@]} -gt 0 ]; then
+  PENDIENTES=("${PENDIENTES_FILTRADAS[@]}")
+else
+  PENDIENTES=()
+fi
 
 # --- Informe --------------------------------------------------------------
 [ ${#YA_APLICADAS[@]} -gt 0 ] && echo "Ya aplicadas: ${#YA_APLICADAS[@]}"
