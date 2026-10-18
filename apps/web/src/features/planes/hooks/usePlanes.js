@@ -52,13 +52,28 @@ function usePlanes() {
     }
   }
 
+  // Nombre y días (0018); el precio va por actualizarRegistro (0016).
+  const actualizarDatos = async (id, datos) => {
+    setError(null)
+    try {
+      await servicio.actualizarDatosPlan(id, datos)
+      await cargar()
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, mensaje: servicio.mensajeDeError(e) }
+    }
+  }
+
   const cambiarEstadoRegistro = async (id, activo) => {
     setError(null)
     try {
       await servicio.cambiarActivoPlan(id, activo)
       await cargar()
+      return { ok: true }
     } catch (e) {
-      setError(servicio.mensajeDeError(e))
+      const mensaje = servicio.mensajeDeError(e)
+      setError(mensaje)
+      return { ok: false, mensaje }
     }
   }
 
@@ -74,6 +89,7 @@ function usePlanes() {
     setDetalleId,
     agregarRegistro,
     actualizarRegistro,
+    actualizarDatos,
     cambiarEstadoRegistro,
     registroEnEdicion,
     registroDetalle,

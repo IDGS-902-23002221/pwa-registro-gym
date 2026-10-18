@@ -8,12 +8,18 @@ import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
+import Switch from '@mui/material/Switch'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import { validarCampos } from '../models/planModel'
 
-// Detalle de un plan y edición de su precio (0016: es lo único editable; el
-// cambio rige para cobros nuevos y no toca los cobros pasados).
-// onGuardarPrecio es async y regresa { ok, mensaje }.
-function DetallePlan({ registro, abierto, onCerrar, onGuardarPrecio }) {
+// Edición completa de un plan en un solo lugar: nombre y días (0018), precio
+// (0016) y estado (0017). Un solo "Guardar" aplica sólo lo que cambió, cada
+// cambio por su rpc auditada. El precio rige cobros nuevos y no toca los pasados.
+function DetallePlan({ registro, abierto, onCerrar, onGuardarDatos, onGuardarPrecio, onCambiarEstado }) {
+  const [nombre, setNombre] = useState('')
+  const [dias, setDias] = useState('')
   const [precio, setPrecio] = useState('')
+  const [activo, setActivo] = useState(true)
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
   const [guardando, setGuardando] = useState(false)
@@ -21,7 +27,10 @@ function DetallePlan({ registro, abierto, onCerrar, onGuardarPrecio }) {
   // Resincroniza al cambiar de plan (no en cada recarga, para no borrar el aviso).
   useEffect(() => {
     if (registro) {
+      setNombre(registro.nombre)
+      setDias(String(registro.dias_periodo))
       setPrecio(String(registro.precio_mxn))
+      setActivo(registro.activo)
       setError('')
       setAviso('')
     }
@@ -34,81 +43,100 @@ function DetallePlan({ registro, abierto, onCerrar, onGuardarPrecio }) {
 
   const guardar = async (evento) => {
     evento.preventDefault()
+    setError('')
+    setAviso('')
 
-    const p = Number(precio)
-    if (String(precio).trim() === '' || Number.isNaN(p) || p <= 0) {
-      setError('El precio debe ser mayor a cero')
-      setAviso('')
+    const mensajeError = validarCampos(nombre, precio, dias)
+    if (mensajeError) {
+      setError(mensajeError)
       return
     }
 
     setGuardando(true)
     try {
-      const res = await onGuardarPrecio(registro.id, p)
-      if (res?.ok === false) {
-        setError(res.mensaje)
-        setAviso('')
-        return
+      if (nombre.trim() !== registro.nombre || Number(dias) !== registro.dias_periodo) {
+        const r = await onGuardarDatos(registro.id, { nombre, dias: Number(dias) })
+        if (r?.ok === false) {
+          setError(r.mensaje)
+          return
+        }
       }
-      setError('')
-      setAviso('Precio actualizado. Rige para cobros nuevos; los cobros pasados no cambian.')
+      if (Number(precio) !== Number(registro.precio_mxn)) {
+        const r = await onGuardarPrecio(registro.id, Number(precio))
+        if (r?.ok === false) {
+          setError(r.mensaje)
+          return
+        }
+      }
+      if (activo !== registro.activo) {
+        const r = await onCambiarEstado(registro.id, activo)
+        if (r?.ok === false) {
+          setError(r.mensaje)
+          return
+        }
+      }
+      setAviso('Cambios guardados.')
     } finally {
       setGuardando(false)
     }
   }
 
-  const datos = [
-    { etiqueta: 'Nombre', valor: registro.nombre },
-    { etiqueta: 'Días del periodo', valor: registro.dias_periodo },
-    { etiqueta: 'Estado', valor: registro.activo ? 'Activo' : 'Inactivo' },
-  ]
-
   return (
     <Dialog open={abierto} onClose={onCerrar} fullWidth maxWidth="xs">
-      <DialogTitle>Detalle del plan</DialogTitle>
+      <DialogTitle>Editar plan</DialogTitle>
       <DialogContent>
-        {datos.map((dato) => (
-          <Box key={dato.etiqueta} sx={{ mb: 2 }}>
-            <Typography variant="caption" color="text.secondary">
-              {dato.etiqueta}
-            </Typography>
-            <Typography variant="body1">{dato.valor}</Typography>
-          </Box>
-        ))}
-
         <Box
+          id="form-plan"
           component="form"
           onSubmit={guardar}
-          sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mt: 1 }}
+          sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}
         >
           <TextField
-            label="Precio (MXN)"
-            type="number"
-            inputProps={{ step: '0.01', min: '0' }}
-            value={precio}
-            onChange={(e) => setPrecio(e.target.value)}
+            label="Nombre"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
             size="small"
             fullWidth
           />
-          <Button type="submit" variant="contained" disabled={guardando}>
-            {guardando ? 'Guardando…' : 'Guardar'}
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField
+              label="Precio (MXN)"
+              type="number"
+              inputProps={{ step: '0.01', min: '0' }}
+              value={precio}
+              onChange={(e) => setPrecio(e.target.value)}
+              size="small"
+              fullWidth
+            />
+            <TextField
+              label="Días"
+              type="number"
+              inputProps={{ min: '1', max: '366' }}
+              helperText="30 = mensual"
+              value={dias}
+              onChange={(e) => setDias(e.target.value)}
+              size="small"
+              fullWidth
+            />
+          </Box>
+          <FormControlLabel
+            control={<Switch checked={activo} onChange={(e) => setActivo(e.target.checked)} />}
+            label={
+              <Typography variant="body2" color="text.secondary">
+                {activo ? 'Activo (se puede vender)' : 'Inactivo (no se vende)'}
+              </Typography>
+            }
+          />
+          {error && <Alert severity="error">{error}</Alert>}
+          {aviso && <Alert severity="success">{aviso}</Alert>}
         </Box>
-
-        {error && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {error}
-          </Alert>
-        )}
-        {aviso && (
-          <Alert severity="success" sx={{ mt: 2 }}>
-            {aviso}
-          </Alert>
-        )}
       </DialogContent>
       <DialogActions>
         <Button variant="outlined" onClick={onCerrar}>
           Cerrar
+        </Button>
+        <Button type="submit" form="form-plan" variant="contained" disabled={guardando}>
+          {guardando ? 'Guardando…' : 'Guardar'}
         </Button>
       </DialogActions>
     </Dialog>

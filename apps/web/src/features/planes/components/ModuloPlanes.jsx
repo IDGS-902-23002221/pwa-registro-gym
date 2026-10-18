@@ -1,6 +1,7 @@
 import Container from '@mui/material/Container'
+import Box from '@mui/material/Box'
 import Alert from '@mui/material/Alert'
-import Header from '../../../shared/layouts/Header'
+import Typography from '@mui/material/Typography'
 import Footer from '../../../shared/layouts/Footer'
 import FormularioPlan from './FormularioPlan'
 import TablaPlanes from './TablaPlanes'
@@ -16,17 +17,23 @@ function ModuloPlanes({ planes }) {
     setDetalleId,
     agregarRegistro,
     actualizarRegistro,
+    actualizarDatos,
     cambiarEstadoRegistro,
     registroDetalle,
   } = planes
 
-  // El detalle edita solo el precio (0016); se reusa el actualizarRegistro del hook.
+  // El detalle edita todo: nombre/días (actualizarDatos), precio (actualizarRegistro) y estado.
   const guardarPrecio = (id, precio) => actualizarRegistro({ id, precio_mxn: precio })
 
   return (
     <>
-      <Header titulo="Catálogo de planes" totalRegistros={registros.length} unidad="plan(es)" />
-      <Container maxWidth="md">
+      <Container maxWidth="md" sx={{ mt: 2 }}>
+        <Typography variant="h5" component="h1" sx={{ mb: 2 }}>
+          Catálogo de planes{' '}
+          <Box component="span" sx={{ color: 'text.secondary', fontSize: '1rem' }}>
+            ({registros.length})
+          </Box>
+        </Typography>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
@@ -43,7 +50,9 @@ function ModuloPlanes({ planes }) {
           registro={registroDetalle}
           abierto={Boolean(registroDetalle)}
           onCerrar={() => setDetalleId(null)}
+          onGuardarDatos={actualizarDatos}
           onGuardarPrecio={guardarPrecio}
+          onCambiarEstado={cambiarEstadoRegistro}
         />
       </Container>
       <Footer />

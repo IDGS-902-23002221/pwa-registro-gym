@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTheme } from '@mui/material/styles'
+import useMediaQuery from '@mui/material/useMediaQuery'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
 import Paper from '@mui/material/Paper'
+import Chip from '@mui/material/Chip'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import CardWell from '../shared/CardWell'
 import { ingresos, cartera, detalleCobros, pdfCobros } from '../features/reportes/services/reportesService'
 import { fechaLarga, fechaHora } from '../shared/formatFecha'
 
@@ -29,14 +33,27 @@ const semanaActual = () => {
   return [aISO(lunes), aISO(domingo)]
 }
 
+// Tarjeta de una fila para móvil (mismo dato que la tabla, en vertical).
+function Tarjeta({ children }) {
+  return (
+    <Paper elevation={0} sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+      {children}
+    </Paper>
+  )
+}
+
 // Pantalla /reportes: presets día/semana/mes + rango manual, ingresos por forma
-// de pago, tabla de cobros del periodo (ordenada del más nuevo al más viejo,
-// descargable en CSV) y cartera de vencidos. El PDF en navegador viene después.
+// de pago, tabla de cobros del periodo y cartera de vencidos, descargable en PDF.
+// Mobile-first: en pantallas chicas cada sección es una lista de tarjetas dentro
+// de un "pozo"; en escritorio, tabla. El corte es render condicional por breakpoint.
 export default function Reportes() {
   const navegar = useNavigate()
-  const [desde, setDesde] = useState(inicioDeMes())
+  const theme = useTheme()
+  const esMovil = useMediaQuery(theme.breakpoints.down('sm'))
+
+  const [desde, setDesde] = useState(hoyISO())
   const [hasta, setHasta] = useState(hoyISO())
-  const [preset, setPreset] = useState('mes')
+  const [preset, setPreset] = useState('dia')
   const [filas, setFilas] = useState([])
   const [detalle, setDetalle] = useState([])
   const [mora, setMora] = useState([])
@@ -83,14 +100,14 @@ export default function Reportes() {
     }
   }
 
+  const total = filas.reduce((acc, f) => acc + Number(f.total_mxn), 0)
+
   const descargar = () => {
     pdfCobros({ filas: detalle, desde, hasta, total })
   }
 
-  const total = filas.reduce((acc, f) => acc + Number(f.total_mxn), 0)
-
   return (
-    <Box sx={{ maxWidth: 720, mx: 'auto', p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Box sx={{ maxWidth: 720, mx: 'auto', p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Button variant="text" sx={{ alignSelf: 'flex-start' }} onClick={() => navegar('/')}>
         ← Volver
       </Button>
@@ -107,6 +124,7 @@ export default function Reportes() {
             key={valor}
             variant={preset === valor ? 'contained' : 'outlined'}
             onClick={() => aplicarPreset(valor)}
+            sx={{ flex: 1 }}
           >
             {etiqueta}
           </Button>
@@ -123,6 +141,7 @@ export default function Reportes() {
             setPreset('rango')
           }}
           size="small"
+          InputLabelProps={{ shrink: true }}
         />
         <TextField
           label="Hasta"
@@ -133,8 +152,8 @@ export default function Reportes() {
             setPreset('rango')
           }}
           size="small"
+          InputLabelProps={{ shrink: true }}
         />
-        {/* Recarga ingresos + cobros + cartera con el rango elegido. */}
         <Button variant="contained" onClick={() => cargar()} disabled={cargando}>
           {cargando ? 'Cargando…' : 'Ver'}
         </Button>
@@ -145,6 +164,34 @@ export default function Reportes() {
         <Typography variant="body2" color="text.secondary">
           {cargando ? 'Cargando…' : 'Sin cobros en ese rango'}
         </Typography>
+      ) : esMovil ? (
+        <CardWell>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {filas.map((f) => (
+              <Tarjeta key={f.forma_pago}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1 }}>
+                  <Typography variant="subtitle2" sx={{ textTransform: 'capitalize' }}>
+                    {f.forma_pago}
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                    ${f.total_mxn}
+                  </Typography>
+                </Box>
+                <Typography variant="caption" color="text.secondary">
+                  {f.cantidad} {Number(f.cantidad) === 1 ? 'cobro' : 'cobros'}
+                </Typography>
+              </Tarjeta>
+            ))}
+            <Tarjeta>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Total</Typography>
+                <Typography variant="h6" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                  ${total.toFixed(2)}
+                </Typography>
+              </Box>
+            </Tarjeta>
+          </Box>
+        </CardWell>
       ) : (
         <TableContainer component={Paper} elevation={0} variant="outlined">
           <Table size="small">
@@ -158,7 +205,7 @@ export default function Reportes() {
             <TableBody>
               {filas.map((f) => (
                 <TableRow key={f.forma_pago}>
-                  <TableCell>{f.forma_pago}</TableCell>
+                  <TableCell sx={{ textTransform: 'capitalize' }}>{f.forma_pago}</TableCell>
                   <TableCell align="right">{f.cantidad}</TableCell>
                   <TableCell align="right">${f.total_mxn}</TableCell>
                 </TableRow>
@@ -173,11 +220,16 @@ export default function Reportes() {
         </TableContainer>
       )}
 
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Typography variant="h6" sx={{ flexGrow: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+        <Typography variant="h6" sx={{ flexGrow: 1, minWidth: 200 }}>
           Cobros del periodo ({detalle.length})
         </Typography>
-        <Button variant="outlined" onClick={descargar} disabled={detalle.length === 0}>
+        <Button
+          variant="outlined"
+          onClick={descargar}
+          disabled={detalle.length === 0}
+          sx={{ flexGrow: { xs: 1, sm: 0 } }}
+        >
           Descargar PDF
         </Button>
       </Box>
@@ -185,6 +237,34 @@ export default function Reportes() {
         <Typography variant="body2" color="text.secondary">
           Sin cobros en ese rango
         </Typography>
+      ) : esMovil ? (
+        <CardWell>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {detalle.map((d, i) => (
+              <Tarjeta key={`${d.folio ?? i}-${d.creado_en}`}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }} noWrap>
+                    {d.socio}
+                  </Typography>
+                  <Typography variant="subtitle1" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                    ${d.monto}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+                  <Typography variant="body2" color="text.secondary" noWrap sx={{ textTransform: 'capitalize' }}>
+                    {d.plan} · {d.forma}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Folio {d.folio ?? '—'}
+                  </Typography>
+                </Box>
+                <Typography variant="caption" color="text.secondary">
+                  {fechaHora(d.creado_en)}
+                </Typography>
+              </Tarjeta>
+            ))}
+          </Box>
+        </CardWell>
       ) : (
         <TableContainer component={Paper} elevation={0} variant="outlined">
           <Table size="small">
@@ -217,6 +297,29 @@ export default function Reportes() {
         <Typography variant="body2" color="text.secondary">
           Sin vencidos. 🎉
         </Typography>
+      ) : esMovil ? (
+        <CardWell>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {mora.map((m) => (
+              <Tarjeta key={m.socio_id}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                    {m.nombre} {m.apellidos ?? ''}
+                  </Typography>
+                  <Chip size="small" color="warning" label={`${m.dias_mora} días`} />
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  Pagado hasta {fechaLarga(m.pagado_hasta)}
+                </Typography>
+                {m.telefono && (
+                  <Typography variant="caption" color="text.secondary">
+                    {m.telefono}
+                  </Typography>
+                )}
+              </Tarjeta>
+            ))}
+          </Box>
+        </CardWell>
       ) : (
         <TableContainer component={Paper} elevation={0} variant="outlined">
           <Table size="small">

@@ -4,6 +4,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Escucha en toda la red local para probar desde el celular (misma Wi-Fi):
+  // http://<tu-ip-lan>:5173
+  server: {
+    host: true,
+  },
   plugins: [
     react(),
      VitePWA({
@@ -12,8 +17,8 @@ export default defineConfig({
         name: 'Registro Gym',
         short_name: 'Gym',
         description: 'Registro de socios y membresias',
-        theme_color: '#1a1a1a',
-        background_color: '#0d0d0d',
+        theme_color: '#12101f',
+        background_color: '#0a0912',
         lang: 'es',
         display: 'standalone',
         start_url: '/',

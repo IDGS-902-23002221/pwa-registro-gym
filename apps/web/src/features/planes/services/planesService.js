@@ -49,6 +49,15 @@ export async function actualizarPrecioPlan(planId, precio) {
   return data
 }
 
+export async function actualizarDatosPlan(planId, { nombre, dias }) {
+  const { error } = await supabase.rpc('actualizar_datos_plan', {
+    p_plan_id: planId,
+    p_nombre: nombre.trim(),
+    p_dias: Number(dias),
+  })
+  if (error) throw error
+}
+
 export async function cambiarActivoPlan(planId, activo) {
   const { error } = await supabase.rpc('cambiar_activo_plan', {
     p_plan_id: planId,

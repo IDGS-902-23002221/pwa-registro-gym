@@ -86,25 +86,34 @@ function FormularioRegistro({ onAgregar, registros = [] }) {
       <Box
         component="form"
         onSubmit={manejarEnvio}
-        sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          flexWrap: { sm: 'wrap' },
+          gap: 2,
+          alignItems: { xs: 'stretch', sm: 'center' },
+        }}
       >
         <TextField
           label="Nombre"
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           size="small"
+          sx={{ width: { xs: '100%', sm: 200 } }}
         />
         <TextField
           label="Apellidos"
           value={apellidos}
           onChange={(e) => setApellidos(e.target.value)}
           size="small"
+          sx={{ width: { xs: '100%', sm: 200 } }}
         />
         <TextField
           label="Telefono"
           value={telefono}
           onChange={(e) => setTelefono(e.target.value)}
           size="small"
+          sx={{ width: { xs: '100%', sm: 160 } }}
         />
         <TextField
           label="Correo (opcional)"
@@ -112,8 +121,14 @@ function FormularioRegistro({ onAgregar, registros = [] }) {
           value={correo}
           onChange={(e) => setCorreo(e.target.value)}
           size="small"
+          sx={{ width: { xs: '100%', sm: 220 } }}
         />
-        <Button type="submit" variant="contained" disabled={enviando}>
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={enviando}
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
+        >
           {enviando ? 'Guardando…' : 'Agregar'}
         </Button>
       </Box>
