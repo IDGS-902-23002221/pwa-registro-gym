@@ -32,7 +32,7 @@ jobs:
       - name: Generar respaldo
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_BACKUP }}
-        run: ./scripts/backup.sh /tmp/respaldos
+        run: bash ./scripts/backup.sh /tmp/respaldos
 
       - name: Subir artefacto
         uses: actions/upload-artifact@v4
