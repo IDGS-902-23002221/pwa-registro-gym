@@ -4,9 +4,9 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import ModuloSocios from '../features/socios/components/ModuloSocios'
-import ModuloMembresias from '../features/membresias/components/ModuloMembresias'
+import ModuloPlanes from '../features/planes/components/ModuloPlanes'
 import useSocios from '../features/socios/hooks/useSocios'
-import useMembresias from '../features/membresias/hooks/useMembresias'
+import usePlanes from '../features/planes/hooks/usePlanes'
 import useAuth from '../features/auth/hooks/useAuth'
 import Login from '../pages/Login'
 import RegistrarPago from '../pages/RegistrarPago'
@@ -30,7 +30,7 @@ function Panel({ auth }) {
   const navegar = useNavigate()
 
   const socios = useSocios()
-  const membresias = useMembresias()
+  const planes = usePlanes()
 
   const salir = async () => {
     await auth.salir()
@@ -47,10 +47,10 @@ function Panel({ auth }) {
           Socios
         </Button>
         <Button
-          variant={vista === 'membresias' ? 'contained' : 'outlined'}
-          onClick={() => setVista('membresias')}
+          variant={vista === 'planes' ? 'contained' : 'outlined'}
+          onClick={() => setVista('planes')}
         >
-          Membresias
+          Planes
         </Button>
         <Button variant="text" color="inherit" onClick={() => navegar('/pagar')}>
           Cobrar
@@ -66,7 +66,7 @@ function Panel({ auth }) {
       {vista === 'socios' ? (
         <ModuloSocios socios={socios} />
       ) : (
-        <ModuloMembresias membresias={membresias} />
+        <ModuloPlanes planes={planes} />
       )}
     </>
   )
