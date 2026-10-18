@@ -9,9 +9,11 @@ export function esDuplicado(error) {
   return error?.code === '23505'
 }
 
-// Listado paginado + búsqueda por nombre o teléfono.
+// Listado paginado + búsqueda por coincidencia en nombre o teléfono.
 // La vista trae nombre_buscable en minúsculas y sin acentos: se filtra con LIKE
-// (no ILIKE, así usa el índice). El teléfono se busca con LIKE sobre sus dígitos.
+// por CONTENIDO ('%término%'), no solo prefijo, así "dam" encuentra a "Damian" y
+// "perez" encuentra por apellido. El índice GIN de trigramas (0014) cubre el
+// comodín inicial. El teléfono se busca igual, por sus dígitos.
 export async function listar({ busqueda = '', limite = 50 } = {}) {
   let q = supabase
     .from('socios_con_estado')
@@ -22,7 +24,7 @@ export async function listar({ busqueda = '', limite = 50 } = {}) {
   // Sin caracteres que rompan la sintaxis de "or" de PostgREST.
   const termino = busqueda.trim().toLowerCase().replace(/[%,()]/g, '')
   if (termino) {
-    q = q.or(`nombre_buscable.like.${termino}%,telefono.like.${termino}%`)
+    q = q.or(`nombre_buscable.like.%${termino}%,telefono.like.%${termino}%`)
   }
 
   const { data, error } = await q
