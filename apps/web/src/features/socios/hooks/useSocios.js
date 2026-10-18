@@ -1,23 +1,26 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import * as servicio from '../services/sociosService'
 
-// Estado de socios contra Supabase. Mantiene la frontera anterior
-// (agregarRegistro, actualizarRegistro, eliminarRegistro) para no tocar componentes,
-// pero todo es async con loading y error. Ante un fallo se recarga del servidor.
+// Estado de socios contra Supabase, en modo "buscar primero": no carga la lista
+// al abrir. Se consulta al escribir (>= 2 caracteres) o al pedir "Ver todos".
+// Mantiene la frontera (agregarRegistro, actualizarRegistro, eliminarRegistro)
+// con carga y error; ante un fallo recarga del servidor.
 function useSocios() {
   const [registros, setRegistros] = useState([])
-  const [cargando, setCargando] = useState(true)
+  const [cargando, setCargando] = useState(false)
   const [error, setError] = useState(null)
   const [busqueda, setBusqueda] = useState('')
+  // 'inicial' (nada), 'busqueda' (resultados de un término) o 'todos' (todos).
+  const [modo, setModo] = useState('inicial')
 
   const [editandoId, setEditandoId] = useState(null)
   const [detalleId, setDetalleId] = useState(null)
 
-  const cargar = useCallback(async (termino = '') => {
+  const cargar = useCallback(async (termino, m) => {
     setCargando(true)
     setError(null)
     try {
-      setRegistros(await servicio.listar({ busqueda: termino }))
+      setRegistros(await servicio.listar({ busqueda: m === 'todos' ? '' : termino }))
     } catch (e) {
       setError(e.message ?? 'No se pudo cargar la lista de socios')
     } finally {
@@ -25,30 +28,44 @@ function useSocios() {
     }
   }, [])
 
-  useEffect(() => {
-    cargar()
-  }, [cargar])
-
   const buscar = useCallback(
     (termino) => {
       setBusqueda(termino)
-      cargar(termino)
+      if (termino.trim().length >= 2) {
+        setModo('busqueda')
+        cargar(termino, 'busqueda')
+      } else {
+        setModo('inicial')
+        setRegistros([])
+      }
     },
     [cargar]
   )
+
+  const verTodos = useCallback(() => {
+    setBusqueda('')
+    setModo('todos')
+    cargar('', 'todos')
+  }, [cargar])
+
+  // Refresca según el modo actual (no hace nada en 'inicial').
+  const recargar = useCallback(() => {
+    if (modo === 'busqueda') cargar(busqueda, 'busqueda')
+    else if (modo === 'todos') cargar('', 'todos')
+  }, [modo, busqueda, cargar])
 
   const agregarRegistro = async (datos) => {
     setError(null)
     try {
       await servicio.crear(datos)
-      await cargar(busqueda)
+      recargar()
       return { ok: true }
     } catch (e) {
       if (servicio.esDuplicado(e)) {
         return {
           ok: false,
           mensaje:
-            'Ese socio ya existe (mismo nombre y teléfono). Búscalo en la lista para registrar su pago o renovar.',
+            'Ese socio ya existe (mismo nombre y teléfono). Búscalo para registrar su pago o renovar.',
         }
       }
       setError(e.message ?? 'No se pudo agregar el socio')
@@ -61,7 +78,7 @@ function useSocios() {
     try {
       await servicio.actualizarContacto(registroActualizado.id, registroActualizado)
       setEditandoId(null)
-      await cargar(busqueda)
+      recargar()
     } catch (e) {
       if (servicio.esDuplicado(e)) {
         setError(
@@ -77,7 +94,7 @@ function useSocios() {
     setError(null)
     try {
       await servicio.eliminar(idAEliminar)
-      await cargar(busqueda)
+      recargar()
     } catch (e) {
       setError(e.message ?? 'No se pudo eliminar el socio')
     }
@@ -91,8 +108,10 @@ function useSocios() {
     cargando,
     error,
     busqueda,
+    modo,
     buscar,
-    recargar: () => cargar(busqueda),
+    verTodos,
+    recargar,
     setEditandoId,
     setDetalleId,
     agregarRegistro,

@@ -9,8 +9,9 @@ export function esDuplicado(error) {
   return error?.code === '23505'
 }
 
-// Listado paginado + búsqueda por nombre. La vista ya trae nombre_buscable en
-// minúsculas y sin acentos: se filtra con LIKE, no ILIKE (así usa el índice).
+// Listado paginado + búsqueda por nombre o teléfono.
+// La vista trae nombre_buscable en minúsculas y sin acentos: se filtra con LIKE
+// (no ILIKE, así usa el índice). El teléfono se busca con LIKE sobre sus dígitos.
 export async function listar({ busqueda = '', limite = 50 } = {}) {
   let q = supabase
     .from('socios_con_estado')
@@ -18,9 +19,10 @@ export async function listar({ busqueda = '', limite = 50 } = {}) {
     .order('creado_en', { ascending: false })
     .limit(limite)
 
-  const termino = busqueda.trim().toLowerCase()
+  // Sin caracteres que rompan la sintaxis de "or" de PostgREST.
+  const termino = busqueda.trim().toLowerCase().replace(/[%,()]/g, '')
   if (termino) {
-    q = q.like('nombre_buscable', `${termino}%`)
+    q = q.or(`nombre_buscable.like.${termino}%,telefono.like.${termino}%`)
   }
 
   const { data, error } = await q
