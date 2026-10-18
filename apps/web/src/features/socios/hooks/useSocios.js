@@ -48,6 +48,13 @@ function useSocios() {
     cargar('', 'todos')
   }, [cargar])
 
+  // Vuelve al estado inicial (nada listado), como recién abierta la pestaña.
+  const limpiar = useCallback(() => {
+    setBusqueda('')
+    setModo('inicial')
+    setRegistros([])
+  }, [])
+
   // Refresca según el modo actual (no hace nada en 'inicial').
   const recargar = useCallback(() => {
     if (modo === 'busqueda') cargar(busqueda, 'busqueda')
@@ -111,6 +118,7 @@ function useSocios() {
     modo,
     buscar,
     verTodos,
+    limpiar,
     recargar,
     setEditandoId,
     setDetalleId,

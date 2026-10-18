@@ -7,8 +7,10 @@ import { fechaHora, fechaLarga } from '../../../shared/formatFecha'
 // se pierde, fallan con GYM10 en vez de devolver cero filas, para no confundir
 // "no hay nada" con "no tienes permiso".
 
-export async function ingresos(desde, hasta) {
-  const { data, error } = await supabase.rpc('reporte_ingresos', {
+// Vencimientos del rango: socios cuyo plan termina entre desde y hasta, con su
+// plan (0019). Sustituye al antiguo reporte de cartera con días de mora.
+export async function vencimientos(desde, hasta) {
+  const { data, error } = await supabase.rpc('reporte_vencimientos', {
     p_desde: desde,
     p_hasta: hasta,
   })
@@ -16,12 +18,6 @@ export async function ingresos(desde, hasta) {
     if (error.code === 'GYM06') throw new Error('El rango de fechas es inválido.')
     throw error
   }
-  return data ?? []
-}
-
-export async function cartera() {
-  const { data, error } = await supabase.rpc('reporte_cartera')
-  if (error) throw error
   return data ?? []
 }
 
@@ -63,7 +59,7 @@ export function pdfCobros({ filas, desde, hasta, total }) {
   doc.text(`Reporte de cobros del ${fechaLarga(desde)} al ${fechaLarga(hasta)}`, 14, 16)
   autoTable(doc, {
     startY: 24,
-    head: [['Fecha', 'Socio', 'Plan', 'Monto', 'Forma', 'Folio']],
+    head: [['Fecha', 'Socio', 'Plan', 'Tipo de pago', 'Monto', 'Folio']],
     body: filas.map((f) => [
       fechaHora(f.creado_en),
       f.socio,

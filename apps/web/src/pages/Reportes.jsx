@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import Box from '@mui/material/Box'
@@ -16,21 +15,21 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import CardWell from '../shared/CardWell'
-import { ingresos, cartera, detalleCobros, pdfCobros } from '../features/reportes/services/reportesService'
-import { fechaLarga, fechaHora } from '../shared/formatFecha'
+import { vencimientos, detalleCobros, pdfCobros } from '../features/reportes/services/reportesService'
+import { fechaLarga, fechaHora, nombreDelMes, diaYMes, anioDe } from '../shared/formatFecha'
 
 const aISO = (f) =>
   `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`
 const hoyISO = () => aISO(new Date())
 const inicioDeMes = () => aISO(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
-// Lunes a domingo de la semana en curso.
+// Semana del gimnasio: lunes a sábado (domingo cerrado).
 const semanaActual = () => {
   const hoy = new Date()
   const lunes = new Date(hoy)
   lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7))
-  const domingo = new Date(lunes)
-  domingo.setDate(lunes.getDate() + 6)
-  return [aISO(lunes), aISO(domingo)]
+  const sabado = new Date(lunes)
+  sabado.setDate(lunes.getDate() + 5)
+  return [aISO(lunes), aISO(sabado)]
 }
 
 // Tarjeta de una fila para móvil (mismo dato que la tabla, en vertical).
@@ -42,21 +41,19 @@ function Tarjeta({ children }) {
   )
 }
 
-// Pantalla /reportes: presets día/semana/mes + rango manual, ingresos por forma
-// de pago, tabla de cobros del periodo y cartera de vencidos, descargable en PDF.
+// Pantalla /reportes: presets día/semana/mes + rango manual. Cobros del rango
+// (descargables en PDF) y vencimientos del rango (a quién le toca renovar).
 // Mobile-first: en pantallas chicas cada sección es una lista de tarjetas dentro
-// de un "pozo"; en escritorio, tabla. El corte es render condicional por breakpoint.
+// de un "pozo"; en escritorio, tabla. El corte es por breakpoint (sin doble DOM).
 export default function Reportes() {
-  const navegar = useNavigate()
   const theme = useTheme()
   const esMovil = useMediaQuery(theme.breakpoints.down('sm'))
 
   const [desde, setDesde] = useState(hoyISO())
   const [hasta, setHasta] = useState(hoyISO())
   const [preset, setPreset] = useState('dia')
-  const [filas, setFilas] = useState([])
   const [detalle, setDetalle] = useState([])
-  const [mora, setMora] = useState([])
+  const [venc, setVenc] = useState([])
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
 
@@ -64,10 +61,9 @@ export default function Reportes() {
     setError('')
     setCargando(true)
     try {
-      const [ing, det, cart] = await Promise.all([ingresos(d, h), detalleCobros(d, h), cartera()])
-      setFilas(ing)
+      const [det, ven] = await Promise.all([detalleCobros(d, h), vencimientos(d, h)])
       setDetalle(det)
-      setMora(cart)
+      setVenc(ven)
     } catch (e) {
       setError(e.message ?? 'No se pudieron cargar los reportes')
     } finally {
@@ -88,10 +84,10 @@ export default function Reportes() {
       setHasta(hoy)
       cargar(hoy, hoy)
     } else if (cual === 'semana') {
-      const [lun, dom] = semanaActual()
+      const [lun, sab] = semanaActual()
       setDesde(lun)
-      setHasta(dom)
-      cargar(lun, dom)
+      setHasta(sab)
+      cargar(lun, sab)
     } else {
       const ini = inicioDeMes()
       setDesde(ini)
@@ -100,17 +96,31 @@ export default function Reportes() {
     }
   }
 
-  const total = filas.reduce((acc, f) => acc + Number(f.total_mxn), 0)
+  const total = detalle.reduce((acc, d) => acc + Number(d.monto), 0)
 
   const descargar = () => {
     pdfCobros({ filas: detalle, desde, hasta, total })
   }
 
+  const tituloCobros = () => {
+    if (preset === 'dia') {
+      if (desde === hoyISO()) return `Cobros de hoy (${diaYMes(desde)}) de ${anioDe(desde)}`
+      return `Cobros de ${diaYMes(desde)} de ${anioDe(desde)}`
+    }
+    if (preset === 'semana') return `Cobros de la semana (${fechaLarga(desde)} a ${fechaLarga(hasta)})`
+    if (preset === 'mes') return `Cobros de ${nombreDelMes(desde)}`
+    return `Cobros del ${fechaLarga(desde)} al ${fechaLarga(hasta)}`
+  }
+
+  const tituloVenc = () => {
+    if (preset === 'dia') return 'Planes que vencen ese día'
+    if (preset === 'semana') return 'Planes que vencen esta semana'
+    if (preset === 'mes') return 'Planes que vencen este mes'
+    return 'Planes que vencen en el rango'
+  }
+
   return (
     <Box sx={{ maxWidth: 720, mx: 'auto', p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Button variant="text" sx={{ alignSelf: 'flex-start' }} onClick={() => navegar('/')}>
-        ← Volver
-      </Button>
       <Typography variant="h5" component="h1">Reportes</Typography>
       {error && <Alert severity="error">{error}</Alert>}
 
@@ -159,70 +169,9 @@ export default function Reportes() {
         </Button>
       </Box>
 
-      <Typography variant="h6">Ingresos por forma de pago</Typography>
-      {filas.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          {cargando ? 'Cargando…' : 'Sin cobros en ese rango'}
-        </Typography>
-      ) : esMovil ? (
-        <CardWell>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            {filas.map((f) => (
-              <Tarjeta key={f.forma_pago}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1 }}>
-                  <Typography variant="subtitle2" sx={{ textTransform: 'capitalize' }}>
-                    {f.forma_pago}
-                  </Typography>
-                  <Typography variant="h6" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                    ${f.total_mxn}
-                  </Typography>
-                </Box>
-                <Typography variant="caption" color="text.secondary">
-                  {f.cantidad} {Number(f.cantidad) === 1 ? 'cobro' : 'cobros'}
-                </Typography>
-              </Tarjeta>
-            ))}
-            <Tarjeta>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Total</Typography>
-                <Typography variant="h6" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                  ${total.toFixed(2)}
-                </Typography>
-              </Box>
-            </Tarjeta>
-          </Box>
-        </CardWell>
-      ) : (
-        <TableContainer component={Paper} elevation={0} variant="outlined">
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Forma de pago</TableCell>
-                <TableCell align="right">Cobros</TableCell>
-                <TableCell align="right">Total</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filas.map((f) => (
-                <TableRow key={f.forma_pago}>
-                  <TableCell sx={{ textTransform: 'capitalize' }}>{f.forma_pago}</TableCell>
-                  <TableCell align="right">{f.cantidad}</TableCell>
-                  <TableCell align="right">${f.total_mxn}</TableCell>
-                </TableRow>
-              ))}
-              <TableRow>
-                <TableCell><strong>Total</strong></TableCell>
-                <TableCell />
-                <TableCell align="right"><strong>${total.toFixed(2)}</strong></TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <Typography variant="h6" sx={{ flexGrow: 1, minWidth: 200 }}>
-          Cobros del periodo ({detalle.length})
+          {tituloCobros()} ({detalle.length})
         </Typography>
         <Button
           variant="outlined"
@@ -251,8 +200,8 @@ export default function Reportes() {
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
-                  <Typography variant="body2" color="text.secondary" noWrap sx={{ textTransform: 'capitalize' }}>
-                    {d.plan} · {d.forma}
+                  <Typography variant="body2" color="text.secondary" noWrap>
+                    {d.plan} · <Box component="span" sx={{ textTransform: 'capitalize' }}>{d.forma}</Box>
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Folio {d.folio ?? '—'}
@@ -273,6 +222,7 @@ export default function Reportes() {
                 <TableCell>Fecha</TableCell>
                 <TableCell>Socio</TableCell>
                 <TableCell>Plan</TableCell>
+                <TableCell>Tipo de pago</TableCell>
                 <TableCell align="right">Monto</TableCell>
                 <TableCell>Folio</TableCell>
               </TableRow>
@@ -283,7 +233,8 @@ export default function Reportes() {
                   <TableCell>{fechaHora(d.creado_en)}</TableCell>
                   <TableCell>{d.socio}</TableCell>
                   <TableCell>{d.plan}</TableCell>
-                  <TableCell align="right">${d.monto} ({d.forma})</TableCell>
+                  <TableCell sx={{ textTransform: 'capitalize' }}>{d.forma}</TableCell>
+                  <TableCell align="right">${d.monto}</TableCell>
                   <TableCell>{d.folio ?? '—'}</TableCell>
                 </TableRow>
               ))}
@@ -292,28 +243,28 @@ export default function Reportes() {
         </TableContainer>
       )}
 
-      <Typography variant="h6">Cartera vencida ({mora.length})</Typography>
-      {mora.length === 0 ? (
+      <Typography variant="h6">{tituloVenc()} ({venc.length})</Typography>
+      {venc.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          Sin vencidos. 🎉
+          Sin vencimientos en ese rango
         </Typography>
       ) : esMovil ? (
         <CardWell>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            {mora.map((m) => (
-              <Tarjeta key={m.socio_id}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                    {m.nombre} {m.apellidos ?? ''}
+            {venc.map((f) => (
+              <Tarjeta key={f.socio_id}>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }} noWrap>
+                    {f.nombre} {f.apellidos ?? ''}
                   </Typography>
-                  <Chip size="small" color="warning" label={`${m.dias_mora} días`} />
+                  {f.plan && <Chip size="small" label={f.plan} color="primary" variant="outlined" />}
                 </Box>
                 <Typography variant="body2" color="text.secondary">
-                  Pagado hasta {fechaLarga(m.pagado_hasta)}
+                  Vence el {fechaLarga(f.vence_en)}
                 </Typography>
-                {m.telefono && (
+                {f.telefono && (
                   <Typography variant="caption" color="text.secondary">
-                    {m.telefono}
+                    {f.telefono}
                   </Typography>
                 )}
               </Tarjeta>
@@ -326,19 +277,19 @@ export default function Reportes() {
             <TableHead>
               <TableRow>
                 <TableCell>Socio</TableCell>
-                <TableCell>Pagado hasta</TableCell>
-                <TableCell align="right">Días de mora</TableCell>
+                <TableCell>Vence el</TableCell>
+                <TableCell>Plan</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {mora.map((m) => (
-                <TableRow key={m.socio_id}>
+              {venc.map((f) => (
+                <TableRow key={f.socio_id}>
                   <TableCell>
-                    {m.nombre} {m.apellidos ?? ''}
-                    {m.telefono ? ` · ${m.telefono}` : ''}
+                    {f.nombre} {f.apellidos ?? ''}
+                    {f.telefono ? ` · ${f.telefono}` : ''}
                   </TableCell>
-                  <TableCell>{fechaLarga(m.pagado_hasta)}</TableCell>
-                  <TableCell align="right">{m.dias_mora}</TableCell>
+                  <TableCell>{fechaLarga(f.vence_en)}</TableCell>
+                  <TableCell>{f.plan ?? '—'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

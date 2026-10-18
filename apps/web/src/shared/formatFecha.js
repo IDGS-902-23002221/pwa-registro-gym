@@ -39,3 +39,25 @@ export const nombreDelMes = (fecha) => {
   if (!anio || !mes) return String(fecha)
   return `${MESES[mes - 1]} de ${anio}`
 }
+
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+
+// '2026-10-12' -> 'lunes 12 de octubre' (día de la semana en UTC, sin mover el día).
+export const fechaLargaDia = (fecha) => {
+  if (!fecha) return '—'
+  const [anio, mes, dia] = String(fecha).split('-').map(Number)
+  if (!anio || !mes || !dia) return String(fecha)
+  const dow = new Date(Date.UTC(anio, mes - 1, dia)).getUTCDay()
+  return `${DIAS[dow]} ${dia} de ${MESES[mes - 1]}`
+}
+
+// '2026-10-17' -> '17 de octubre'
+export const diaYMes = (fecha) => {
+  if (!fecha) return '—'
+  const [, mes, dia] = String(fecha).split('-').map(Number)
+  if (!mes || !dia) return String(fecha)
+  return `${dia} de ${MESES[mes - 1]}`
+}
+
+// '2026-10-17' -> '2026'
+export const anioDe = (fecha) => (fecha ? String(fecha).split('-')[0] : '')

@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Typography from '@mui/material/Typography'
+import ModuloInicio from '../features/inicio/components/ModuloInicio'
 import ModuloSocios from '../features/socios/components/ModuloSocios'
 import ModuloPlanes from '../features/planes/components/ModuloPlanes'
 import useSocios from '../features/socios/hooks/useSocios'
@@ -46,6 +47,14 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login auth={auth} />} />
         <Route
+          path="/inicio"
+          element={
+            <Autenticado auth={auth}>
+              <ModuloInicio />
+            </Autenticado>
+          }
+        />
+        <Route
           path="/socios"
           element={
             <Autenticado auth={auth}>
@@ -77,8 +86,8 @@ function App() {
             </Autenticado>
           }
         />
-        <Route path="/" element={<Navigate to="/socios" replace />} />
-        <Route path="*" element={<Navigate to="/socios" replace />} />
+        <Route path="/" element={<Navigate to="/inicio" replace />} />
+        <Route path="*" element={<Navigate to="/inicio" replace />} />
       </Routes>
     </BrowserRouter>
   )

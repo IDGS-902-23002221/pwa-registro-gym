@@ -9,7 +9,6 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import IconButton from '@mui/material/IconButton'
-import Button from '@mui/material/Button'
 import Switch from '@mui/material/Switch'
 import Chip from '@mui/material/Chip'
 import Typography from '@mui/material/Typography'
@@ -42,21 +41,22 @@ function TablaPlanes({ registros = [], cargando = false, onVerDetalle, onCambiar
   if (esMovil) {
     return (
       <CardWell>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           {registros.map((registro) => (
             <Paper
               key={registro.id}
               elevation={0}
               sx={{
-                p: 2,
+                px: 1.5,
+                py: 1,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 1.25,
+                gap: 0.5,
                 opacity: registro.activo ? 1 : 0.6,
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700 }} noWrap>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }} noWrap>
                   {registro.nombre}
                 </Typography>
                 <Chip
@@ -64,32 +64,35 @@ function TablaPlanes({ registros = [], cargando = false, onVerDetalle, onCambiar
                   label={registro.activo ? 'Activo' : 'Inactivo'}
                   color={registro.activo ? 'success' : 'default'}
                   variant={registro.activo ? 'filled' : 'outlined'}
+                  sx={{ height: 20, fontSize: 11 }}
                 />
               </Box>
 
-              <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                <Typography variant="h6" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {precio(registro.precio_mxn)}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {registro.dias_periodo} {registro.dias_periodo === 1 ? 'día' : 'días'}
-                </Typography>
-              </Box>
-
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<VisibilityIcon fontSize="small" />}
-                  onClick={() => onVerDetalle(registro.id)}
-                >
-                  Detalle
-                </Button>
-                <Switch
-                  checked={registro.activo}
-                  onChange={(e) => onCambiarEstado(registro.id, e.target.checked)}
-                  inputProps={{ 'aria-label': `Activar o desactivar ${registro.nombre}` }}
-                />
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, minWidth: 0 }}>
+                  <Typography variant="subtitle1" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>
+                    {precio(registro.precio_mxn)}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {registro.dias_periodo} {registro.dias_periodo === 1 ? 'día' : 'días'}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                  <IconButton
+                    size="small"
+                    color="info"
+                    onClick={() => onVerDetalle(registro.id)}
+                    aria-label={`Ver detalle de ${registro.nombre}`}
+                  >
+                    <VisibilityIcon fontSize="small" />
+                  </IconButton>
+                  <Switch
+                    size="small"
+                    checked={registro.activo}
+                    onChange={(e) => onCambiarEstado(registro.id, e.target.checked)}
+                    inputProps={{ 'aria-label': `Activar o desactivar ${registro.nombre}` }}
+                  />
+                </Box>
               </Box>
             </Paper>
           ))}

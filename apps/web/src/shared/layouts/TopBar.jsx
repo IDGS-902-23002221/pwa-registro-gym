@@ -13,6 +13,7 @@ import LogoutIcon from '@mui/icons-material/Logout'
 // salir. La sección activa se deriva de la ruta, así el botón "Atrás" del celular
 // y los enlaces directos funcionan solos. En móvil las pestañas van a lo ancho.
 const SECCIONES = [
+  { valor: 'inicio', etiqueta: 'Inicio', ruta: '/inicio' },
   { valor: 'socios', etiqueta: 'Socios', ruta: '/socios' },
   { valor: 'planes', etiqueta: 'Planes', ruta: '/planes' },
   { valor: 'cobrar', etiqueta: 'Cobrar', ruta: '/pagar' },
@@ -20,7 +21,7 @@ const SECCIONES = [
 ]
 
 const seccionDe = (pathname) =>
-  SECCIONES.find((s) => pathname.startsWith(s.ruta))?.valor ?? 'socios'
+  SECCIONES.find((s) => pathname.startsWith(s.ruta))?.valor ?? 'inicio'
 
 function TopBar({ onSalir }) {
   const navegar = useNavigate()
@@ -48,7 +49,14 @@ function TopBar({ onSalir }) {
           minHeight: 46,
           borderTop: '1px solid',
           borderColor: 'divider',
-          '& .MuiTab-root': { minHeight: 46, fontWeight: 700 },
+          '& .MuiTab-root': {
+            minHeight: 46,
+            minWidth: 0,
+            px: 0.5,
+            fontWeight: 700,
+            fontSize: 12.5,
+            textTransform: 'none',
+          },
         }}
       >
         {SECCIONES.map((s) => (
