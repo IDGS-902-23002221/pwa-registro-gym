@@ -1,0 +1,12 @@
+# Los scripts se ejecutan en WSL/Git Bash sobre Linux: si git los guarda con CRLF
+# (core.autocrlf=true en esta maquina) fallan con "/bin/bash^M: No such file".
+* text=auto
+*.sh text eol=lf
+*.sql text eol=lf
+*.mjs text eol=lf
+
+# Los archivos de configuracion deben conservar exactamente sus bytes.
+.env.example -text
+*.png binary
+*.ico binary
+*.webmanifest text eol=lf
