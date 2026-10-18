@@ -8,8 +8,10 @@ import MenuItem from '@mui/material/MenuItem'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
 import Paper from '@mui/material/Paper'
+import Chip from '@mui/material/Chip'
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
+import CardWell from '../shared/CardWell'
 import { listar as listarSocios } from '../features/socios/services/sociosService'
 import { listarPlanes, registrarPago, mensajeDeError } from '../features/pagos/services/pagosService'
 import { fechaLarga, nombreDelMes } from '../shared/formatFecha'
@@ -183,18 +185,56 @@ export default function RegistrarPago() {
         size="small"
         fullWidth
       />
-      {!socioElegido &&
-        socios.map((s) => (
-          <Button
-            key={s.id}
-            variant="text"
-            sx={{ justifyContent: 'flex-start' }}
-            onClick={() => setSocioId(s.id)}
-          >
-            {s.nombre} {s.apellidos ?? ''} ({s.estado_calculado}
-            {s.pagado_hasta ? ` hasta el ${fechaLarga(s.pagado_hasta)}` : ''})
-          </Button>
-        ))}
+      {!socioElegido && socios.length > 0 && (
+        <CardWell>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {socios.map((s) => (
+              <Paper
+                key={s.id}
+                elevation={0}
+                role="button"
+                tabIndex={0}
+                onClick={() => setSocioId(s.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') setSocioId(s.id)
+                }}
+                sx={{
+                  p: 1.5,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 0.5,
+                  '&:hover': { backgroundColor: 'action.hover' },
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }} noWrap>
+                    {s.nombre} {s.apellidos ?? ''}
+                  </Typography>
+                  <Chip
+                    size="small"
+                    label={s.estado_calculado}
+                    color={
+                      s.estado_calculado === 'activo'
+                        ? 'success'
+                        : s.estado_calculado === 'vencido'
+                          ? 'warning'
+                          : 'default'
+                    }
+                    variant={s.estado_calculado === 'activo' ? 'filled' : 'outlined'}
+                    sx={{ height: 20, fontSize: 11 }}
+                  />
+                </Box>
+                {s.pagado_hasta && (
+                  <Typography variant="caption" color="text.secondary">
+                    Pagado hasta el {fechaLarga(s.pagado_hasta)}
+                  </Typography>
+                )}
+              </Paper>
+            ))}
+          </Box>
+        </CardWell>
+      )}
       {socioElegido?.pagado_hasta && socioElegido.pagado_hasta >= hoyISO() && (
         <Alert severity="info">
           Tiene membresía activa hasta el {fechaLarga(socioElegido.pagado_hasta)}. El cobro
