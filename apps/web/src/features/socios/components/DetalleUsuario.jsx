@@ -17,7 +17,7 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import { listarHistorial } from '../../pagos/services/pagosService'
-import { fechaLarga, moverDias } from '../../../shared/formatFecha'
+import { fechaLarga, fechaLargaDeMomento, moverDias } from '../../../shared/formatFecha'
 
 // El join pago→recibo puede venir como objeto o como arreglo según PostgREST.
 const folioDe = (pago) =>
@@ -99,7 +99,7 @@ function DetalleUsuario({ registro, abierto, onCerrar, onEditar, onEliminar }) {
                   Cubre del {fechaLarga(p.periodo)} al {p.fin ? fechaLarga(p.fin) : '—'}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Pagó el {fechaLarga(String(p.creado_en).slice(0, 10))}
+                  Pagó el {fechaLargaDeMomento(p.creado_en)}
                   {p.planNombre ? ` · ${p.planNombre}${p.planDias ? ` (${p.planDias} d)` : ''}` : ''}
                 </Typography>
               </Paper>
@@ -122,7 +122,7 @@ function DetalleUsuario({ registro, abierto, onCerrar, onEditar, onEliminar }) {
                 {cobros.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell>{folioDe(p) ?? '—'}</TableCell>
-                    <TableCell>{fechaLarga(String(p.creado_en).slice(0, 10))}</TableCell>
+                    <TableCell>{fechaLargaDeMomento(p.creado_en)}</TableCell>
                     <TableCell>{fechaLarga(p.periodo)}</TableCell>
                     <TableCell>{p.fin ? fechaLarga(p.fin) : '—'}</TableCell>
                     <TableCell>

@@ -1,11 +1,37 @@
-// Formato de fechas para la interfaz. Se parte 'YYYY-MM-DD' a mano: new Date()
-// interpreta sin hora como UTC y en México puede mover el día (02 §7: nada de
-// datos confusos al usuario).
+// Formato de fechas para la interfaz. Las fechas de SOLO DÍA ('YYYY-MM-DD') se
+// parten a mano: new Date() las interpreta como UTC y en México puede mover el
+// día (02 §7: nada de datos confusos al usuario). Los TIMESTAMPS (con hora) sí
+// se convierten a la zona del gimnasio antes de mostrarse.
 
 const MESES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
 ]
+
+// Zona del gimnasio, fija (no la del dispositivo) para que la hora se vea igual
+// en cualquier celular. León, Gto. es zona centro; México no aplica horario de
+// verano desde 2022, así que es UTC-6 todo el año.
+const ZONA = 'America/Mexico_City'
+
+// Partes (año, mes, día, hora, minuto) de un timestamp en la zona del gimnasio.
+// Devuelve null si viene vacío o no es una fecha válida.
+const partesEnZona = (momento) => {
+  if (!momento) return null
+  const fecha = momento instanceof Date ? momento : new Date(momento)
+  if (Number.isNaN(fecha.getTime())) return null
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: ZONA,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(fecha)
+  const v = {}
+  for (const { type, value } of partes) v[type] = value
+  return { anio: +v.year, mes: +v.month, dia: +v.day, hora: v.hour, minuto: v.minute }
+}
 
 // '2026-10-30' -> '30 de octubre de 2026'
 export const fechaLarga = (fecha) => {
@@ -24,12 +50,21 @@ export const moverDias = (fecha, n) => {
   return `${f.getUTCFullYear()}-${String(f.getUTCMonth() + 1).padStart(2, '0')}-${String(f.getUTCDate()).padStart(2, '0')}`
 }
 
-// '2026-10-30T14:05:00+00:00' -> '30 de octubre de 2026, 14:05' (hora tal cual
-// viene de la base, sin convertir zona).
-export const fechaHora = (fechaHora) => {
-  if (!fechaHora) return '—'
-  const [fecha, hora] = String(fechaHora).split('T')
-  return `${fechaLarga(fecha)}, ${(hora ?? '').slice(0, 5)}`
+// Timestamp -> '18 de octubre de 2026, 22:16' (hora del gimnasio, no UTC).
+// Antes se cortaba el ISO y se mostraba la hora UTC tal cual: un cobro de las
+// 22:16 se veía como "04:16" del día siguiente.
+export const fechaHora = (momento) => {
+  const p = partesEnZona(momento)
+  if (!p) return '—'
+  return `${p.dia} de ${MESES[p.mes - 1]} de ${p.anio}, ${p.hora}:${p.minuto}`
+}
+
+// Timestamp -> '18 de octubre de 2026' (solo el día del gimnasio). Para listados
+// donde no hace falta la hora, sin caer en el día UTC.
+export const fechaLargaDeMomento = (momento) => {
+  const p = partesEnZona(momento)
+  if (!p) return '—'
+  return `${p.dia} de ${MESES[p.mes - 1]} de ${p.anio}`
 }
 
 // '2026-10-01' -> 'octubre de 2026'

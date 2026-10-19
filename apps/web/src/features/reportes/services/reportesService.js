@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { supabase } from '../../../shared/supabaseClient'
-import { fechaHora, fechaLarga } from '../../../shared/formatFecha'
+import { fechaHora, fechaLarga, moverDias } from '../../../shared/formatFecha'
 
 // Reportes: solo lectura por funciones SECURITY DEFINER (02 §5). Si la sesión
 // se pierde, fallan con GYM10 en vez de devolver cero filas, para no confundir
@@ -21,7 +21,15 @@ export async function vencimientos(desde, hasta) {
   return data ?? []
 }
 
-// Cobros del rango con socio y folio, ordenados del más nuevo al más viejo.
+// Un 'YYYY-MM-DD' como límite ISO con la hora del gimnasio (León = UTC-6 fijo).
+// Es lo que se compara contra creado_en (timestamptz): sin el offset, Postgres
+// lo leería como UTC y un cobro de las 22:00 se saldría del día.
+const inicioDelDia = (dia) => `${dia}T00:00:00-06:00`
+
+// Cobros HECHOS en el rango (por creado_en, la fecha del cobro), con socio y
+// folio, del más nuevo al más viejo. Antes se filtraba por periodo (inicio de
+// cobertura), que es otro día: un cobro de renovación podía no aparecer hasta su
+// semana de cobertura, o mostrarse una fila con fecha fuera del rango pedido.
 // El plan se deduce por monto contra el catálogo activo (hoy sin ambigüedad:
 // 350/250/50). Si dos planes costaran igual, habría que cruzar con membresía.
 export async function detalleCobros(desde, hasta) {
@@ -29,8 +37,8 @@ export async function detalleCobros(desde, hasta) {
     supabase
       .from('pago')
       .select('monto_mxn, forma_pago, periodo, creado_en, socio(nombre, apellidos), recibo(folio)')
-      .gte('periodo', desde)
-      .lte('periodo', hasta)
+      .gte('creado_en', inicioDelDia(desde))
+      .lt('creado_en', inicioDelDia(moverDias(hasta, 1)))
       .order('creado_en', { ascending: false }),
     supabase.from('plan').select('nombre, precio_mxn').eq('activo', true),
   ])
@@ -64,11 +72,11 @@ export function pdfCobros({ filas, desde, hasta, total }) {
       fechaHora(f.creado_en),
       f.socio,
       f.plan,
-      `$${f.monto}`,
       f.forma,
+      `$${f.monto}`,
       f.folio ?? '—',
     ]),
-    foot: [['', '', 'Total', `$${Number(total).toFixed(2)}`, '', '']],
+    foot: [['', '', '', 'Total', `$${Number(total).toFixed(2)}`, '']],
   })
   doc.save(`reporte-${desde}_${hasta}.pdf`)
 }
