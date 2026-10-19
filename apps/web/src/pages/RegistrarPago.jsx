@@ -285,7 +285,7 @@ export default function RegistrarPago() {
           ))}
         </TextField>
         <TextField
-          label="Inicio de cobertura (cualquier día)"
+          label="Se empieza a cobrar desde el día"
           type="date"
           value={periodo}
           onChange={(e) => setPeriodo(e.target.value)}
