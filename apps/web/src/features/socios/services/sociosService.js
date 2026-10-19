@@ -47,6 +47,33 @@ export async function crear({ nombre, apellidos, telefono, correo }) {
   return data
 }
 
+// Normalización igual a la base (normalizar_texto de 0001): minúsculas, sin
+// acentos, un solo espacio y sin bordes. Es la misma clave con la que la vista
+// arma nombre_buscable.
+const normalizar = (texto) =>
+  (texto ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+// Socios vigentes con el MISMO nombre y apellidos (sin importar el teléfono).
+// Es el aviso "no lo dupliques" cuando el socio pudo cambiar de número (02 §4):
+// el índice único solo bloquea nombre+apellidos+teléfono iguales. Se compara
+// exacto contra nombre_buscable, que ya viene normalizado en la vista.
+export async function buscarHomonimos(nombre, apellidos) {
+  const claveNombre = normalizar(nombre)
+  if (!claveNombre) return []
+  const clave = `${claveNombre} ${normalizar(apellidos)}`
+  const { data, error } = await supabase
+    .from('socios_con_estado')
+    .select('id, nombre, apellidos, telefono, pagado_hasta, estado_calculado')
+    .eq('nombre_buscable', clave)
+  if (error) throw error
+  return data ?? []
+}
+
 // Solo datos de contacto (nombre, apellidos, correo, teléfono).
 export async function actualizarContacto(id, { nombre, apellidos, telefono, correo }) {
   const { error } = await supabase

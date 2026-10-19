@@ -6,32 +6,41 @@ import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
 import { validarContacto } from '../models/socioModel'
-
-// Normalización igual que la base (minúsculas, sin acentos, un solo espacio).
-const normalizar = (texto) =>
-  (texto ?? '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
+import { buscarHomonimos } from '../services/sociosService'
 
 // Alta de socio: nombre + apellidos + teléfono (+ correo opcional).
 // Sin membresía: la cobertura nace con el primer pago (registrar_pago).
-function FormularioRegistro({ onAgregar, registros = [] }) {
+//
+// Antes de guardar se buscan homónimos (mismo nombre y apellidos, sin importar
+// el teléfono). Si hay alguno, se avisa y se pide confirmar. La búsqueda va a la
+// base, no a la lista ya cargada, así el aviso no depende de lo que esté en
+// pantalla.
+function FormularioRegistro({ onAgregar }) {
   const [nombre, setNombre] = useState('')
   const [apellidos, setApellidos] = useState('')
   const [telefono, setTelefono] = useState('')
   const [correo, setCorreo] = useState('')
   const [error, setError] = useState('')
-  const [aviso, setAviso] = useState('')
   const [enviando, setEnviando] = useState(false)
+  const [homonimos, setHomonimos] = useState([])
+  const [confirmado, setConfirmado] = useState(false)
 
   const limpiarFormulario = () => {
     setNombre('')
     setApellidos('')
     setTelefono('')
     setCorreo('')
+    setHomonimos([])
+    setConfirmado(false)
+  }
+
+  // Si el usuario corrige algo después del aviso, el aviso se reinicia.
+  const cambiar = (setter) => (evento) => {
+    setter(evento.target.value)
+    if (confirmado) {
+      setConfirmado(false)
+      setHomonimos([])
+    }
   }
 
   const manejarEnvio = async (evento) => {
@@ -43,25 +52,39 @@ function FormularioRegistro({ onAgregar, registros = [] }) {
       return
     }
 
+    // Primera pasada: avisar si ya existe el mismo nombre.
+    if (!confirmado) {
+      setError('')
+      setEnviando(true)
+      try {
+        const encontrados = await buscarHomonimos(nombre, apellidos)
+        if (encontrados.length > 0) {
+          setHomonimos(encontrados)
+          setConfirmado(true)
+          return
+        }
+      } catch {
+        // Si la consulta falla, no bloquees el alta: la base sigue siendo la
+        // última defensa (índice único nombre + apellidos + teléfono).
+      } finally {
+        setEnviando(false)
+      }
+    }
+
     setEnviando(true)
-    const resultado = await onAgregar({ nombre, apellidos, telefono, correo })
+    const resultado = await onAgregar({
+      nombre,
+      apellidos,
+      telefono,
+      correo,
+      homonimos: homonimos.length,
+    })
     setEnviando(false)
 
     if (!resultado.ok) {
       setError(resultado.mensaje)
       return
     }
-    // Aviso sin bloqueo (02 §4): mismo nombre con otro teléfono.
-    const homonimo = registros.some(
-      (r) =>
-        normalizar(r.nombre) === normalizar(nombre) &&
-        normalizar(r.apellidos) === normalizar(apellidos)
-    )
-    setAviso(
-      homonimo
-        ? 'Aviso: ya existe otro socio con ese mismo nombre (otro teléfono). Revisa que no sea la misma persona.'
-        : ''
-    )
     setError('')
     limpiarFormulario()
   }
@@ -77,9 +100,22 @@ function FormularioRegistro({ onAgregar, registros = [] }) {
           {error}
         </Alert>
       )}
-      {aviso && (
+      {confirmado && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          {aviso}
+          <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
+            Ya existe {homonimos.length === 1 ? 'un socio' : `${homonimos.length} socios`} con ese
+            nombre:
+          </Typography>
+          {homonimos.map((h) => (
+            <Typography key={h.id} variant="body2">
+              • {h.nombre} {h.apellidos ?? ''}
+              {h.telefono ? ` — ${h.telefono}` : ''}
+            </Typography>
+          ))}
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Si es la misma persona, búscala en <strong>Cobrar</strong> y renueva su membresía. Si
+            es otra persona, confirma abajo.
+          </Typography>
         </Alert>
       )}
 
@@ -97,21 +133,21 @@ function FormularioRegistro({ onAgregar, registros = [] }) {
         <TextField
           label="Nombre"
           value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
+          onChange={cambiar(setNombre)}
           size="small"
           sx={{ width: { xs: '100%', sm: 200 } }}
         />
         <TextField
           label="Apellidos"
           value={apellidos}
-          onChange={(e) => setApellidos(e.target.value)}
+          onChange={cambiar(setApellidos)}
           size="small"
           sx={{ width: { xs: '100%', sm: 200 } }}
         />
         <TextField
           label="Telefono"
           value={telefono}
-          onChange={(e) => setTelefono(e.target.value)}
+          onChange={cambiar(setTelefono)}
           size="small"
           sx={{ width: { xs: '100%', sm: 160 } }}
         />
@@ -119,7 +155,7 @@ function FormularioRegistro({ onAgregar, registros = [] }) {
           label="Correo (opcional)"
           type="email"
           value={correo}
-          onChange={(e) => setCorreo(e.target.value)}
+          onChange={cambiar(setCorreo)}
           size="small"
           sx={{ width: { xs: '100%', sm: 220 } }}
         />
@@ -129,7 +165,7 @@ function FormularioRegistro({ onAgregar, registros = [] }) {
           disabled={enviando}
           sx={{ width: { xs: '100%', sm: 'auto' } }}
         >
-          {enviando ? 'Guardando…' : 'Agregar'}
+          {enviando ? 'Guardando…' : confirmado ? 'Es otra persona, guardar' : 'Agregar'}
         </Button>
       </Box>
     </Paper>

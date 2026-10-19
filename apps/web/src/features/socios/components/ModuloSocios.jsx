@@ -5,6 +5,7 @@ import Paper from '@mui/material/Paper'
 import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
+import Snackbar from '@mui/material/Snackbar'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import Footer from '../../../shared/layouts/Footer'
@@ -36,10 +37,18 @@ function ModuloSocios({ socios }) {
   } = socios
 
   const [mostrarAlta, setMostrarAlta] = useState(false)
+  const [aviso, setAviso] = useState(null)
 
   const agregar = async (datos) => {
     const resultado = await agregarRegistro(datos)
-    if (resultado.ok) setMostrarAlta(false)
+    if (resultado.ok) {
+      setMostrarAlta(false)
+      setAviso(
+        datos.homonimos > 0
+          ? { tipo: 'warning', texto: 'Socio agregado. Ojo: ya existía otro con el mismo nombre.' }
+          : { tipo: 'success', texto: 'Socio agregado correctamente.' }
+      )
+    }
     return resultado
   }
 
@@ -118,7 +127,7 @@ function ModuloSocios({ socios }) {
             {/* Alta de socio, plegada para no empujar los resultados. */}
             <Box sx={{ mt: 3 }}>
               {mostrarAlta ? (
-                <FormularioRegistro onAgregar={agregar} registros={registros} />
+                <FormularioRegistro onAgregar={agregar} />
               ) : (
                 <Button
                   variant="outlined"
@@ -147,6 +156,21 @@ function ModuloSocios({ socios }) {
           }}
         />
       </Container>
+      <Snackbar
+        open={Boolean(aviso)}
+        autoHideDuration={4000}
+        onClose={() => setAviso(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={aviso?.tipo ?? 'success'}
+          variant="filled"
+          onClose={() => setAviso(null)}
+          sx={{ width: '100%' }}
+        >
+          {aviso?.texto}
+        </Alert>
+      </Snackbar>
       <Footer />
     </>
   )
